@@ -83,6 +83,23 @@
                 console.log('✅ Versão atualizada!');
             }
         })();
+
+        // Verificação periódica de atualizações (a cada 5 minutos)
+        setInterval(() => {
+            fetch(window.location.href, { cache: 'no-store' })
+                .then(response => response.text())
+                .then(html => {
+                    const versaoNoServidor = html.match(/VERSION:\s*([\d.]+)/)?.[1];
+                    const versaoAtual = localStorage.getItem('appVersion');
+
+                    if (versaoNoServidor && versaoNoServidor !== versaoAtual) {
+                        console.log('🔔 Nova versão disponível no servidor:', versaoNoServidor);
+                        console.log('Recarregando...');
+                        window.location.reload();
+                    }
+                })
+                .catch(err => console.log('Verificação de versão:', err.message));
+        }, 300000); // 5 minutos
     </script>
 
     <style>
