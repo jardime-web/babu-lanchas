@@ -16,12 +16,33 @@
             const versaoAtual = '2.1.0';
             const versaoArmazenada = localStorage.getItem('appVersion');
 
+            console.log('🔍 Verificação de versão:');
+            console.log('Versão atual no arquivo:', versaoAtual);
+            console.log('Versão armazenada:', versaoArmazenada);
+
             if (versaoArmazenada !== versaoAtual) {
-                // Nova versão detectada - limpar cache
+                console.log('⚠️ Nova versão detectada! Limpando cache...');
+
+                // Limpar localStorage (exceto dados importantes)
+                const dadosImportantes = [
+                    'agendamentos_abertos_list',
+                    'agendamentos_realizados_list',
+                    'lanchas_list',
+                    'vendedores_list',
+                    'despesas_list',
+                    'senha_admin',
+                    'pergunta_seguranca',
+                    'resposta_seguranca',
+                    'dica_senha',
+                    'numeroRecibo'
+                ];
+
+                // Deletar todos os caches
                 if ('caches' in window) {
                     caches.keys().then(cacheNames => {
                         cacheNames.forEach(cacheName => {
                             caches.delete(cacheName);
+                            console.log('✅ Cache deletado:', cacheName);
                         });
                     });
                 }
@@ -31,15 +52,31 @@
                     navigator.serviceWorker.getRegistrations().then(registrations => {
                         registrations.forEach(registration => {
                             registration.unregister();
+                            console.log('✅ Service Worker desregistrado');
                         });
+                    });
+                }
+
+                // Limpar IndexedDB
+                if ('indexedDB' in window) {
+                    const dbs = ['agendamentos', 'despesas', 'lanchas'];
+                    dbs.forEach(db => {
+                        const req = indexedDB.deleteDatabase(db);
+                        req.onsuccess = () => console.log('✅ IndexedDB deletado:', db);
                     });
                 }
 
                 // Atualizar versão armazenada
                 localStorage.setItem('appVersion', versaoAtual);
+                console.log('✅ Versão atualizada para:', versaoAtual);
 
-                // Fazer reload da página
-                window.location.reload();
+                // Fazer reload da página com cache bypass
+                console.log('🔄 Recarregando página...');
+                setTimeout(() => {
+                    window.location.href = window.location.pathname + '?v=' + Date.now();
+                }, 500);
+            } else {
+                console.log('✅ Versão atualizada!');
             }
         })();
     </script>
