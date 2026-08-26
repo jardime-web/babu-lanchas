@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1a5f7a">
+    <meta name="description" content="App para gerenciar agendamentos e faturamento de lanchas">
+    <title>Agendamentos | BABU LANCHAS</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%231a5f7a' width='192' height='192'/><text x='96' y='120' font-size='100' font-weight='bold' fill='white' text-anchor='middle'>⛵</text></svg>">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%231a5f7a' width='192' height='192'/><text x='96' y='120' font-size='100' font-weight='bold' fill='white' text-anchor='middle'>⛵</text></svg>">
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html, body {
+            height: 100%;
+            width: 100%;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            padding: 10px;
+            color: #333;
+            overflow-x: hidden;
+        }
+
+        header {
+            background: #1a5f7a;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        header h1 {
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+
+        .status {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .tab-btn {
+            padding: 8px 15px;
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            flex: 1;
+        }
+
+        .tab-btn.active {
+            background: #1a5f7a;
+            color: white;
+            border-color: #1a5f7a;
+        }
+
+        .content {
+            display: none;
+        }
+
+        .content.active {
+            display: block;
+        }
+
+        .form-edit {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        .form-edit.show {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 10px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: bold;
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 13px;
+        }
+
+        .btn-primary {
+            background: #1a5f7a;
+            color: white;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .btn-toggle {
+            background: #1a5f7a;
+            color: white;
+            flex: 1;
+        }
+
+        .btn-config {
+            background: #27ae60;
+            color: white;
+            flex: 1;
+            display: none;
+        }
+
+        .btn-realizado {
+            background: #27ae60;
+            color: white;
+            padding: 6px 12px;
+            font-size: 11px;
+            margin: 2px;
+        }
+
+        .btn-delete {
+            background: #e74c3c;
+            color: white;
+            padding: 6px 10px;
+            font-size: 11px;
+            margin: 2px;
+        }
+
+        .btn-voltar {
+            background: #f39c12;
+            color: white;
+            padding: 6px 12px;
+            font-size: 11px;
+            margin: 2px;
+        }
+
+        .summary {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .summary-box {
+            background: white;
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+            border-left: 4px solid #1a5f7a;
+        }
+
+        .summary-box h3 {
+            font-size: 11px;
+            color: #666;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .summary-box .value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #1a5f7a;
+            font-family: monospace;
+        }
+
+        .agendamento {
+            background: white;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            border-left: 4px solid #27ae60;
+        }
+
+        .agendamento-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .agendamento-data {
+            font-weight: bold;
+            color: #1a5f7a;
+            font-size: 14px;
+        }
+
+        .agendamento-vendedor {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .agendamento-valores {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+
+        .valor {
+            background: #f9f9f9;
+            padding: 6px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .valor-label {
+            color: #666;
+        }
+
+        .valor-amount {
+            font-weight: bold;
+            color: #333;
+            font-family: monospace;
+        }
+
+        .falta {
+            color: #e67e22;
+        }
+
+        .agendamento-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2px;
+        }
+
+        .empty {
+            text-align: center;
+            color: #999;
+            padding: 20px;
+            font-size: 13px;
+        }
+
+        .lancha-group {
+            margin-bottom: 15px;
+        }
+
+        .lancha-group-title {
+            font-weight: bold;
+            color: white;
+            background: #34495e;
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 10px;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 400px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-content h2 {
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+
+        .modal-content input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .modal-actions button {
+            flex: 1;
+            padding: 8px;
+        }
+
+        .btn-cancel {
+            background: #ddd;
+            color: #333;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #27ae60;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 4px;
+            z-index: 2000;
+            font-size: 13px;
+        }
+
+        @media (max-width: 600px) {
+            .summary {
+                grid-template-columns: 1fr;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            .btn-toggle, .btn-config {
+                flex: none;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>⛵ Agendamentos | BABU LANCHAS</h1>
+        <div class="status" id="status">Visualização</div>
+    </header>
+
+    <div class="button-group">
+        <button class="btn-toggle" onclick="toggleEdit()">🔒 Modo Edição</button>
+        <button class="btn-config" id="btnConfig" onclick="abrirConfigLanchas()">⚙️ Configurar Lanchas</button>
+    </div>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('abertos')">📋 Abertos</button>
+        <button class="tab-btn" onclick="switchTab('realizados')">✅ Realizados</button>
+    </div>
+
+    <div id="abertos" class="content active">
+        <div class="form-edit" id="formAbertos">
+            <h3 style="margin-bottom: 15px;">➕ Novo Agendamento</h3>
+            <div class="form-group">
+                <label>Lancha</label>
+                <select id="selectLancha" required>
+                    <option value="">Escolha a lancha</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Data</label>
+                <input type="date" id="dataAbertos" required>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Vendedor</label>
+                    <input type="text" id="vendAbertos" placeholder="Nome" required>
+                </div>
+                <div class="form-group">
+                    <label>Valor Pedido</label>
+                    <input type="number" id="pedAbertos" placeholder="0.00" step="0.01" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Valor Recebido</label>
+                <input type="number" id="recAbertos" placeholder="0.00" step="0.01" required>
+            </div>
+            <button class="btn-primary" onclick="addAgendamento()">Adicionar</button>
+        </div>
+
+        <div class="summary" id="summaryAbertos"></div>
+        <div id="listaAbertos"></div>
+    </div>
+
+    <div id="realizados" class="content">
+        <div class="summary" id="summaryRealizados"></div>
+        <div id="listaRealizados"></div>
+    </div>
+
+    <div class="modal" id="modalSenha">
+        <div class="modal-content">
+            <h2>Modo Edição</h2>
+            <input type="password" id="inputSenha" placeholder="Digite a senha">
+            <div class="modal-actions">
+                <button class="btn-primary" onclick="verificarSenha()">Entrar</button>
+                <button class="btn-cancel" onclick="fecharModal()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="modalLanchas">
+        <div class="modal-content">
+            <h2>⚙️ Gerenciar Lanchas</h2>
+            <div id="listaLanchasConfig" style="margin: 15px 0;"></div>
+            <div class="form-group">
+                <label>Nova Lancha</label>
+                <input type="text" id="inputNovaLancha" placeholder="Nome da lancha">
+            </div>
+            <div class="modal-actions">
+                <button class="btn-primary" onclick="adicionarNovaLancha()">Adicionar</button>
+                <button class="btn-cancel" onclick="fecharModalLanchas()">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SENHA = "1234";
+        let editMode = false;
+        let lanchas = [];
+        let agendamentosAbertos = [];
+        let agendamentosRealizados = [];
+
+        // Registrar Service Worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').catch(() => {
+                // SW não disponível (normal em desenvolvimento)
+            });
+        }
+
+        function getLanchasDoStorage() {
+            const stored = localStorage.getItem('lanchas_list');
+            if (stored) {
+                lanchas = JSON.parse(stored);
+            } else {
+                lanchas = [
+                    { id: 'lancha1', nome: 'Sheiknah' },
+                    { id: 'lancha2', nome: 'Carpe Diem' },
+                    { id: 'lancha3', nome: 'Mais C' }
+                ];
+                localStorage.setItem('lanchas_list', JSON.stringify(lanchas));
+            }
+            updateSelectLancha();
+        }
+
+        function getAgendamentosDoStorage() {
+            const abertos = localStorage.getItem('agendamentos_abertos');
+            const realizados = localStorage.getItem('agendamentos_realizados');
+            agendamentosAbertos = abertos ? JSON.parse(abertos) : [];
+            agendamentosRealizados = realizados ? JSON.parse(realizados) : [];
+        }
+
+        function saveAgendamentos() {
+            localStorage.setItem('agendamentos_abertos', JSON.stringify(agendamentosAbertos));
+            localStorage.setItem('agendamentos_realizados', JSON.stringify(agendamentosRealizados));
+        }
+
+        function updateSelectLancha() {
+            const select = document.getElementById('selectLancha');
+            select.innerHTML = '<option value="">Escolha a lancha</option>' +
+                lanchas.map(l => `<option value="${l.id}">${l.nome}</option>`).join('');
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(tab).classList.add('active');
+            event.target.classList.add('active');
+
+            if (tab === 'abertos') {
+                renderAbertos();
+            } else {
+                renderRealizados();
+            }
+        }
+
+        function toggleEdit() {
+            if (editMode) {
+                editMode = false;
+                document.getElementById('status').textContent = 'Visualização';
+                document.getElementById('formAbertos').classList.remove('show');
+                document.getElementById('btnConfig').style.display = 'none';
+                mostrarToast('Modo edição desativado');
+            } else {
+                document.getElementById('modalSenha').classList.add('show');
+                document.getElementById('inputSenha').focus();
+            }
+        }
+
+        function abrirConfigLanchas() {
+            renderConfigLanchas();
+            document.getElementById('modalLanchas').classList.add('show');
+        }
+
+        function renderConfigLanchas() {
+            const lista = document.getElementById('listaLanchasConfig');
+            lista.innerHTML = lanchas.map(l => `
+                <div style="background: #f9f9f9; padding: 10px; border-radius: 4px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="flex: 1;">
+                        <input type="text" value="${l.nome}" id="edit-${l.id}" style="width: 100%; padding: 5px; border: 1px solid #ddd; border-radius: 3px;">
+                    </div>
+                    <button class="btn-delete" onclick="deletarLancha('${l.id}')">🗑️</button>
+                </div>
+                <button style="width: 100%; padding: 5px; margin-bottom: 10px; background: #3498db; color: white; border: none; border-radius: 3px; cursor: pointer;" onclick="salvarNomeLancha('${l.id}')">Salvar</button>
+            `).join('');
+        }
+
+        function salvarNomeLancha(id) {
+            const novoNome = document.getElementById(`edit-${id}`).value;
+            if (novoNome.trim()) {
+                const idx = lanchas.findIndex(l => l.id === id);
+                lanchas[idx].nome = novoNome;
+                localStorage.setItem('lanchas_list', JSON.stringify(lanchas));
+                updateSelectLancha();
+                renderConfigLanchas();
+                mostrarToast('Lancha atualizada!');
+            }
+        }
+
+        function deletarLancha(id) {
+            if (lanchas.length <= 1) {
+                mostrarToast('Você precisa ter pelo menos uma lancha!');
+                return;
+            }
+            if (confirm('Deletar esta lancha e seus agendamentos?')) {
+                lanchas = lanchas.filter(l => l.id !== id);
+                agendamentosAbertos = agendamentosAbertos.filter(a => a.lanchaId !== id);
+                agendamentosRealizados = agendamentosRealizados.filter(a => a.lanchaId !== id);
+                saveAgendamentos();
+                localStorage.setItem('lanchas_list', JSON.stringify(lanchas));
+                updateSelectLancha();
+                renderConfigLanchas();
+                mostrarToast('Lancha deletada!');
+            }
+        }
+
+        function adicionarNovaLancha() {
+            const nome = document.getElementById('inputNovaLancha').value.trim();
+            if (!nome) {
+                mostrarToast('Digite um nome para a lancha');
+                return;
+            }
+
+            const id = 'lancha_' + Date.now();
+            lanchas.push({ id, nome });
+            localStorage.setItem('lanchas_list', JSON.stringify(lanchas));
+            document.getElementById('inputNovaLancha').value = '';
+            updateSelectLancha();
+            renderConfigLanchas();
+            mostrarToast('Lancha adicionada!');
+        }
+
+        function fecharModalLanchas() {
+            document.getElementById('modalLanchas').classList.remove('show');
+        }
+
+        function fecharModal() {
+            document.getElementById('modalSenha').classList.remove('show');
+            document.getElementById('inputSenha').value = '';
+        }
+
+        function verificarSenha() {
+            const senha = document.getElementById('inputSenha').value;
+            if (senha === SENHA) {
+                editMode = true;
+                document.getElementById('status').textContent = '✏️ Modo Edição';
+                document.getElementById('formAbertos').classList.add('show');
+                document.getElementById('btnConfig').style.display = 'block';
+                fecharModal();
+                mostrarToast('Modo edição ativado');
+            } else {
+                mostrarToast('Senha incorreta!');
+                document.getElementById('inputSenha').value = '';
+            }
+        }
+
+        function addAgendamento() {
+            if (!editMode) {
+                mostrarToast('Ative o modo edição');
+                return;
+            }
+
+            const lanchaId = document.getElementById('selectLancha').value;
+            const data = document.getElementById('dataAbertos').value;
+            const vendedor = document.getElementById('vendAbertos').value;
+            const pedido = parseFloat(document.getElementById('pedAbertos').value) || 0;
+            const recebido = parseFloat(document.getElementById('recAbertos').value) || 0;
+
+            if (!lanchaId || !data || !vendedor || pedido <= 0) {
+                mostrarToast('Preencha todos os campos');
+                return;
+            }
+
+            const lanchaObj = lanchas.find(l => l.id === lanchaId);
+
+            agendamentosAbertos.push({
+                id: Date.now(),
+                lanchaId,
+                lanchaNome: lanchaObj.nome,
+                data,
+                vendedor,
+                pedido,
+                recebido,
+                dataCriacao: new Date().toISOString()
+            });
+
+            saveAgendamentos();
+            document.getElementById('selectLancha').value = '';
+            document.getElementById('dataAbertos').value = '';
+            document.getElementById('vendAbertos').value = '';
+            document.getElementById('pedAbertos').value = '';
+            document.getElementById('recAbertos').value = '';
+            renderAbertos();
+            mostrarToast('Agendamento adicionado!');
+        }
+
+        function marcarRealizado(id) {
+            const idx = agendamentosAbertos.findIndex(a => a.id === id);
+            if (idx !== -1) {
+                const agend = agendamentosAbertos[idx];
+                agendamentosRealizados.push({
+                    ...agend,
+                    dataRealizacao: new Date().toISOString()
+                });
+                agendamentosAbertos.splice(idx, 1);
+                saveAgendamentos();
+                renderAbertos();
+                mostrarToast('Agendamento marcado como realizado!');
+            }
+        }
+
+        function voltarParaAberto(id) {
+            const idx = agendamentosRealizados.findIndex(a => a.id === id);
+            if (idx !== -1) {
+                const agend = agendamentosRealizados[idx];
+                agendamentosAbertos.push(agend);
+                agendamentosRealizados.splice(idx, 1);
+                saveAgendamentos();
+                renderRealizados();
+                mostrarToast('Agendamento retornado para aberto!');
+            }
+        }
+
+        function deletarAgendamento(id, tipo) {
+            if (confirm('Deletar agendamento?')) {
+                if (tipo === 'aberto') {
+                    agendamentosAbertos = agendamentosAbertos.filter(a => a.id !== id);
+                } else {
+                    agendamentosRealizados = agendamentosRealizados.filter(a => a.id !== id);
+                }
+                saveAgendamentos();
+                renderAbertos();
+                renderRealizados();
+                mostrarToast('Agendamento deletado!');
+            }
+        }
+
+        function renderAbertos() {
+            const list = document.getElementById('listaAbertos');
+            const summary = document.getElementById('summaryAbertos');
+
+            if (agendamentosAbertos.length === 0) {
+                list.innerHTML = '<div class="empty">✨ Nenhum agendamento aberto</div>';
+            } else {
+                const sorted = [...agendamentosAbertos].sort((a, b) => new Date(a.data) - new Date(b.data));
+                const grouped = {};
+
+                sorted.forEach(a => {
+                    if (!grouped[a.lanchaId]) {
+                        grouped[a.lanchaId] = [];
+                    }
+                    grouped[a.lanchaId].push(a);
+                });
+
+                list.innerHTML = Object.keys(grouped).map(lanchaId => {
+                    const lanchaAgends = grouped[lanchaId];
+                    const lanchaObj = lanchas.find(l => l.id === lanchaId);
+
+                    return `
+                        <div class="lancha-group">
+                            <div class="lancha-group-title">🚤 ${lanchaObj?.nome || 'Lancha Desconhecida'}</div>
+                            ${lanchaAgends.map(a => {
+                                const data = new Date(a.data).toLocaleDateString('pt-BR');
+                                const falta = a.pedido - a.recebido;
+                                return `
+                                    <div class="agendamento">
+                                        <div class="agendamento-header">
+                                            <span class="agendamento-data">${data}</span>
+                                        </div>
+                                        <div class="agendamento-vendedor">👤 ${a.vendedor}</div>
+                                        <div class="agendamento-valores">
+                                            <div class="valor">
+                                                <span class="valor-label">Pedido:</span>
+                                                <span class="valor-amount">R$ ${a.pedido.toFixed(2)}</span>
+                                            </div>
+                                            <div class="valor">
+                                                <span class="valor-label">Recebido:</span>
+                                                <span class="valor-amount">R$ ${a.recebido.toFixed(2)}</span>
+                                            </div>
+                                            <div class="valor">
+                                                <span class="valor-label">Falta:</span>
+                                                <span class="valor-amount falta">R$ ${falta.toFixed(2)}</span>
+                                            </div>
+                                        </div>
+                                        <div class="agendamento-actions">
+                                            <button class="btn-realizado" onclick="marcarRealizado(${a.id})">✅ Realizado</button>
+                                            ${editMode ? `<button class="btn-delete" onclick="deletarAgendamento(${a.id}, 'aberto')">🗑️ Deletar</button>` : ''}
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            let totalPedido = 0, totalRecebido = 0;
+            agendamentosAbertos.forEach(a => {
+                totalPedido += a.pedido;
+                totalRecebido += a.recebido;
+            });
+            const totalFalta = totalPedido - totalRecebido;
+
+            summary.innerHTML = `
+                <div class="summary-box">
+                    <h3>Pedido</h3>
+                    <div class="value">R$ ${totalPedido.toFixed(2)}</div>
+                </div>
+                <div class="summary-box">
+                    <h3>Recebido</h3>
+                    <div class="value">R$ ${totalRecebido.toFixed(2)}</div>
+                </div>
+                <div class="summary-box">
+                    <h3>Falta</h3>
+                    <div class="value">R$ ${totalFalta.toFixed(2)}</div>
+                </div>
+            `;
+        }
+
+        function renderRealizados() {
+            const list = document.getElementById('listaRealizados');
+            const summary = document.getElementById('summaryRealizados');
+
+            if (agendamentosRealizados.length === 0) {
+                list.innerHTML = '<div class="empty">Nenhum agendamento realizado</div>';
+            } else {
+                const sorted = [...agendamentosRealizados].sort((a, b) => new Date(b.dataRealizacao) - new Date(a.dataRealizacao));
+                const grouped = {};
+
+                sorted.forEach(a => {
+                    if (!grouped[a.lanchaId]) {
+                        grouped[a.lanchaId] = [];
+                    }
+                    grouped[a.lanchaId].push(a);
+                });
+
+                list.innerHTML = Object.keys(grouped).map(lanchaId => {
+                    const lanchaAgends = grouped[lanchaId];
+                    const lanchaObj = lanchas.find(l => l.id === lanchaId);
+
+                    return `
+                        <div class="lancha-group">
+                            <div class="lancha-group-title">🚤 ${lanchaObj?.nome || 'Lancha Desconhecida'}</div>
+                            ${lanchaAgends.map(a => {
+                                const data = new Date(a.data).toLocaleDateString('pt-BR');
+                                const falta = a.pedido - a.recebido;
+                                return `
+                                    <div class="agendamento" style="border-left-color: #95a5a6;">
+                                        <div class="agendamento-header">
+                                            <span class="agendamento-data">${data}</span>
+                                        </div>
+                                        <div class="agendamento-vendedor">👤 ${a.vendedor}</div>
+                                        <div class="agendamento-valores">
+                                            <div class="valor">
+                                                <span class="valor-label">Pedido:</span>
+                                                <span class="valor-amount">R$ ${a.pedido.toFixed(2)}</span>
+                                            </div>
+                                            <div class="valor">
+                                                <span class="valor-label">Recebido:</span>
+                                                <span class="valor-amount">R$ ${a.recebido.toFixed(2)}</span>
+                                            </div>
+                                            <div class="valor">
+                                                <span class="valor-label">Falta:</span>
+                                                <span class="valor-amount falta">R$ ${falta.toFixed(2)}</span>
+                                            </div>
+                                        </div>
+                                        <div class="agendamento-actions">
+                                            <button class="btn-voltar" onclick="voltarParaAberto(${a.id})">↩️ Voltar</button>
+                                            ${editMode ? `<button class="btn-delete" onclick="deletarAgendamento(${a.id}, 'realizado')">🗑️ Deletar</button>` : ''}
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            let totalPedido = 0, totalRecebido = 0;
+            agendamentosRealizados.forEach(a => {
+                totalPedido += a.pedido;
+                totalRecebido += a.recebido;
+            });
+            const totalFalta = totalPedido - totalRecebido;
+
+            summary.innerHTML = `
+                <div class="summary-box">
+                    <h3>Pedido</h3>
+                    <div class="value">R$ ${totalPedido.toFixed(2)}</div>
+                </div>
+                <div class="summary-box">
+                    <h3>Recebido</h3>
+                    <div class="value">R$ ${totalRecebido.toFixed(2)}</div>
+                </div>
+                <div class="summary-box">
+                    <h3>Falta</h3>
+                    <div class="value">R$ ${totalFalta.toFixed(2)}</div>
+                </div>
+            `;
+        }
+
+        function mostrarToast(msg) {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = msg;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2000);
+        }
+
+        window.addEventListener('load', () => {
+            getLanchasDoStorage();
+            getAgendamentosDoStorage();
+            renderAbertos();
+            document.getElementById('inputSenha').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') verificarSenha();
+            });
+            document.getElementById('inputNovaLancha').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') adicionarNovaLancha();
+            });
+        });
+    </script>
+</body>
+</html>
