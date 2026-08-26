@@ -1,0 +1,2307 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1a5f7a">
+    <meta name="description" content="App para gerenciar agendamentos e faturamento de lanchas">
+    <title>Agendamentos | BABU LANCHAS</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%231a5f7a' width='192' height='192'/><text x='96' y='120' font-size='100' font-weight='bold' fill='white' text-anchor='middle'>⛵</text></svg>">
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html, body {
+            height: 100%;
+            width: 100%;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            padding: 10px;
+            color: #333;
+            overflow-x: hidden;
+        }
+
+        header {
+            background: #1a5f7a;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        header h1 {
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+
+        .status {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+            overflow-x: auto;
+        }
+
+        .tab-btn {
+            padding: 8px 15px;
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        .tab-btn.active {
+            background: #1a5f7a;
+            color: white;
+            border-color: #1a5f7a;
+        }
+
+        .content {
+            display: none;
+        }
+
+        .content.active {
+            display: block;
+        }
+
+        .form-edit {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        .form-edit.show {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 10px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: bold;
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        button {
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: opacity 0.2s;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        /* Botões padrão em modais */
+        .btn-primary {
+            background: #1a5f7a;
+            color: white;
+            padding: 10px 20px;
+            font-size: 13px;
+            min-height: 40px;
+        }
+
+        .btn-cancel {
+            background: #ddd;
+            color: #333;
+            padding: 10px 20px;
+            font-size: 13px;
+            min-height: 40px;
+        }
+
+        /* Botões full-width fora de modais */
+        .btn-primary[style*="width: 100%"] {
+            width: 100%;
+        }
+
+        /* Botões no header */
+        .btn-toggle {
+            background: #1a5f7a;
+            color: white;
+            flex: 1;
+            padding: 10px 15px;
+            font-size: 13px;
+            min-height: 40px;
+        }
+
+        .btn-config {
+            background: #27ae60;
+            color: white;
+            flex: 1;
+            display: none;
+            padding: 10px 15px;
+            font-size: 13px;
+            min-height: 40px;
+        }
+
+        /* Botões pequenos em linhas de agendamento */
+        .btn-realizado {
+            background: #27ae60;
+            color: white;
+            padding: 6px 12px;
+            font-size: 11px;
+            margin: 2px;
+            height: 32px;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .btn-editar {
+            background: #3498db;
+            color: white;
+            padding: 6px 12px;
+            font-size: 11px;
+            margin: 2px;
+            height: 32px;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .btn-delete {
+            background: #e74c3c;
+            color: white;
+            padding: 6px 12px;
+            font-size: 11px;
+            margin: 2px;
+            height: 32px;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .btn-voltar {
+            background: #f39c12;
+            color: white;
+            padding: 6px 12px;
+            font-size: 11px;
+            margin: 2px;
+            height: 32px;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .summary {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .summary-box {
+            background: white;
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+            border-left: 4px solid #1a5f7a;
+        }
+
+        .summary-box h3 {
+            font-size: 11px;
+            color: #666;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .summary-box .value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #1a5f7a;
+            font-family: monospace;
+        }
+
+        .filtros {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .filtros h3 {
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .agendamento {
+            background: white;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            border-left: 4px solid #27ae60;
+        }
+
+        .agendamento-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+
+        .agendamento-data {
+            font-weight: bold;
+            color: #1a5f7a;
+            font-size: 14px;
+        }
+
+        .agendamento-lancha {
+            font-size: 11px;
+            background: #1a5f7a;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 3px;
+            display: inline-block;
+        }
+
+        .agendamento-vendedor {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .agendamento-valores {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+
+        .valor {
+            background: #f9f9f9;
+            padding: 6px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .valor-label {
+            color: #666;
+        }
+
+        .valor-amount {
+            font-weight: bold;
+            color: #333;
+            font-family: monospace;
+        }
+
+        .falta {
+            color: #e67e22;
+        }
+
+        .agendamento-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2px;
+        }
+
+        .empty {
+            text-align: center;
+            color: #999;
+            padding: 20px;
+            font-size: 13px;
+        }
+
+        .lancha-group {
+            margin-bottom: 15px;
+        }
+
+        .lancha-group-title {
+            font-weight: bold;
+            color: white;
+            background: #34495e;
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 10px;
+            overflow-y: auto;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 450px;
+            width: 100%;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        .modal-content h2 {
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+
+        .modal-content input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .modal-actions button {
+            flex: 1;
+            padding: 10px 20px;
+            font-size: 13px;
+            font-weight: bold;
+            min-height: 40px;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #27ae60;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 4px;
+            z-index: 2000;
+            font-size: 13px;
+        }
+
+        .recibo {
+            background: white;
+            padding: 20px;
+            max-width: 400px;
+            margin: 0 auto;
+            border: 2px solid #1a5f7a;
+            border-radius: 8px;
+            font-family: Arial, sans-serif;
+        }
+
+        .recibo-header {
+            text-align: center;
+            border-bottom: 2px solid #1a5f7a;
+            padding-bottom: 15px;
+            margin-bottom: 15px;
+        }
+
+        .recibo-header h1 {
+            font-size: 18px;
+            margin: 0;
+            color: #1a5f7a;
+        }
+
+        .recibo-header p {
+            margin: 5px 0 0 0;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .recibo-line {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+            font-size: 13px;
+        }
+
+        .recibo-line.total {
+            font-weight: bold;
+            border-bottom: 2px solid #1a5f7a;
+            border-top: 2px solid #1a5f7a;
+            padding: 10px 0;
+        }
+
+        .recibo-footer {
+            text-align: center;
+            font-size: 11px;
+            color: #999;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+
+        @media print {
+            body * { display: none; }
+            .recibo, .recibo * { display: block !important; }
+            .recibo { margin: 0; border: none; box-shadow: none; }
+        }
+
+        @media (max-width: 600px) {
+            .summary {
+                grid-template-columns: 1fr;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            .btn-toggle, .btn-config {
+                flex: none;
+                width: 100%;
+            }
+        }
+
+        /* Mobile otimizado para <480px */
+        @media (max-width: 480px) {
+            body {
+                padding: 8px;
+            }
+
+            header {
+                padding: 12px;
+                margin-bottom: 12px;
+            }
+
+            header h1 {
+                font-size: 16px;
+                margin-bottom: 3px;
+            }
+
+            .status {
+                font-size: 10px;
+            }
+
+            .tabs {
+                gap: 5px;
+                margin-bottom: 12px;
+            }
+
+            .tab-btn {
+                padding: 6px 10px;
+                font-size: 11px;
+            }
+
+            .button-group {
+                gap: 6px;
+                margin-bottom: 12px;
+                flex-direction: column;
+            }
+
+            .btn-toggle, .btn-config {
+                padding: 8px 12px;
+                font-size: 12px;
+                min-height: 36px;
+                width: 100%;
+            }
+
+            .form-group input,
+            .form-group select {
+                font-size: 16px;
+            }
+
+            .agendamento {
+                padding: 10px;
+                margin-bottom: 8px;
+            }
+
+            .agendamento-header {
+                flex-wrap: wrap;
+            }
+
+            .agendamento-data {
+                font-size: 12px;
+            }
+
+            .agendamento-valores {
+                grid-template-columns: 1fr;
+                font-size: 11px;
+            }
+
+            .btn-realizado, .btn-editar, .btn-delete, .btn-voltar {
+                padding: 5px 10px;
+                font-size: 10px;
+                height: 30px;
+                margin: 1px;
+            }
+
+            .modal-content {
+                padding: 15px;
+                border-radius: 6px;
+                max-width: 95%;
+            }
+
+            .modal-content h2 {
+                font-size: 14px;
+                margin-bottom: 10px;
+            }
+
+            .modal-content input {
+                font-size: 16px;
+                padding: 10px;
+                margin-bottom: 8px;
+            }
+
+            .modal-actions {
+                flex-direction: column;
+                gap: 8px;
+                margin-top: 12px;
+            }
+
+            .modal-actions button {
+                padding: 10px 15px;
+                font-size: 12px;
+                min-height: 38px;
+                width: 100%;
+            }
+
+            .summary-box {
+                padding: 10px;
+                font-size: 10px;
+            }
+
+            .summary-box h3 {
+                font-size: 10px;
+            }
+
+            .summary-box .value {
+                font-size: 14px;
+            }
+
+            .tabs {
+                margin-bottom: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>⛵ Agendamentos | BABU LANCHAS</h1>
+        <div class="status" id="status">Visualização</div>
+    </header>
+
+    <div class="button-group">
+        <button class="btn-toggle" onclick="toggleEdit()" aria-label="Entrar ou sair do modo administrador">🔐 Modo Administrador</button>
+        <button class="btn-config" id="btnConfig" onclick="abrirConfiguracao()" aria-label="Abrir configurações do sistema">⚙️ Configurar</button>
+    </div>
+
+    <!-- DASHBOARD RESUMO -->
+    <div id="dashboardResumo" style="display: none;"></div>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('abertos')" aria-label="Ver agendamentos abertos">📋 Abertos</button>
+        <button class="tab-btn" onclick="switchTab('realizados')" aria-label="Ver agendamentos realizados">✅ Realizados</button>
+        <button class="tab-btn" onclick="switchTab('disponibilidade')" aria-label="Ver calendário de disponibilidade">📅 Disponibilidade</button>
+        <button class="tab-btn" id="tabExtrato" onclick="switchTab('extrato')" style="display: none;" aria-label="Ver extrato e faturamento">💰 Extrato</button>
+    </div>
+
+    <!-- ABA ABERTOS -->
+    <div id="abertos" class="content active">
+        <div class="form-edit" id="formAbertos">
+            <h3 style="margin-bottom: 15px;">➕ Novo Agendamento</h3>
+            <div class="form-group">
+                <label>Lancha</label>
+                <select id="selectLancha" required>
+                    <option value="">Escolha a lancha</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Vendedor</label>
+                <select id="selectVendedor" required>
+                    <option value="">Escolha o vendedor</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Data</label>
+                    <input type="date" id="dataAbertos" required>
+                </div>
+                <div class="form-group">
+                    <label>Qtd. Pessoas</label>
+                    <input type="number" id="qtdPessoasAbertos" placeholder="0" min="1" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Valor Solicitado</label>
+                    <input type="number" id="pedAbertos" placeholder="0.00" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label>Valor Recebido</label>
+                    <input type="number" id="recAbertos" placeholder="0.00" step="0.01" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>📝 Observações (opcional)</label>
+                <input type="text" id="obsAbertos" placeholder="Nome, telefone, aniversário, notas...">
+            </div>
+            <button class="btn-primary" onclick="addAgendamento()" aria-label="Adicionar novo agendamento">Adicionar</button>
+        </div>
+
+
+        <div class="summary" id="summaryAbertos"></div>
+        <div id="listaAbertos"></div>
+    </div>
+
+    <!-- ABA REALIZADOS -->
+    <div id="realizados" class="content">
+        <div class="summary" id="summaryRealizados"></div>
+        <div id="listaRealizados"></div>
+    </div>
+
+    <!-- ABA DISPONIBILIDADE -->
+    <div id="disponibilidade" class="content">
+        <div class="filtros" style="margin-bottom: 15px;">
+            <h3>📅 Selecione o Mês</h3>
+            <div class="form-group">
+                <input type="month" id="mesFiltro">
+            </div>
+            <button class="btn-primary" onclick="renderDisponibilidade()" style="margin-top: 0;" aria-label="Buscar agendamentos no calendário">Buscar</button>
+        </div>
+        <div id="listaDisponibilidade"></div>
+    </div>
+
+    <!-- ABA EXTRATO -->
+    <div id="extrato" class="content">
+        <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+            <div class="form-group">
+                <label>🔍 Filtrar por Lancha:</label>
+                <select id="extratoFiltroLancha" onchange="renderExtrato()">
+                    <option value="">Total Geral</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- RESUMO -->
+        <div id="resumoExtrato" style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px;"></div>
+
+        <!-- DESPESAS -->
+        <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+            <h3 style="margin-bottom: 15px;">💸 Despesas</h3>
+            <div id="listaDespesas"></div>
+        </div>
+    </div>
+
+    <!-- MODAL SENHA -->
+    <div class="modal" id="modalSenha">
+        <div class="modal-content">
+            <h2>🔐 Modo Administrador</h2>
+            <input type="password" id="inputSenha" placeholder="Digite a senha">
+            <div class="modal-actions">
+                <button class="btn-primary" onclick="verificarSenha()" aria-label="Verificar senha e entrar no modo administrador">Entrar</button>
+                <button class="btn-cancel" onclick="fecharModal()" aria-label="Cancelar entrada no modo administrador">Cancelar</button>
+            </div>
+            <div style="text-align: center; margin-top: 15px;">
+                <button class="btn-cancel" onclick="abrirModalRecuperarSenha()" style="font-size: 12px; padding: 6px 10px;" aria-label="Abrir opções de recuperação de senha">Esqueci a senha</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL RECUPERAR SENHA -->
+    <div class="modal" id="modalRecuperarSenha">
+        <div class="modal-content">
+            <h2>🔑 Recuperar Senha</h2>
+            <div id="opcoesSenhaDiv"></div>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="fecharModalRecuperarSenha()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL ADICIONAR DESPESA -->
+    <div class="modal" id="modalAdicionarDespesa">
+        <div class="modal-content">
+            <h2>💸 Adicionar Despesa</h2>
+            <div class="form-group">
+                <label>Mês</label>
+                <input type="month" id="despesaMes" required>
+            </div>
+            <div class="form-group">
+                <label>Lancha</label>
+                <select id="despesaLancha" required>
+                    <option value="todas">Todas as lanchas</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Categoria</label>
+                <select id="despesaCategoria" required>
+                    <option value="">Escolha a categoria</option>
+                    <option value="Diesel">Diesel</option>
+                    <option value="Prestador de Serviço">Prestador de Serviço</option>
+                    <option value="Manutenção">Manutenção</option>
+                    <option value="Peças">Peças</option>
+                    <option value="Diversos">Diversos</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Valor (R$)</label>
+                <input type="number" id="despesaValor" placeholder="0.00" step="0.01" required>
+            </div>
+            <div class="form-group">
+                <label>Descrição (opcional)</label>
+                <input type="text" id="despesaDescricao" placeholder="Ex: Diesel 50L">
+            </div>
+            <div class="modal-actions">
+                <button class="btn-primary" onclick="salvarDespesa()" aria-label="Salvar nova despesa">Salvar</button>
+                <button class="btn-cancel" onclick="fecharModalAdicionarDespesa()" aria-label="Cancelar adição de despesa">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CONFIGURAÇÃO -->
+    <div class="modal" id="modalConfig">
+        <div class="modal-content">
+            <h2>⚙️ Configurar</h2>
+
+            <h3 style="margin-top: 20px; margin-bottom: 10px;">🔐 Segurança</h3>
+            <div class="form-group">
+                <label>Alterar Senha</label>
+                <input type="password" id="inputNovaSenha" placeholder="Digite a nova senha">
+            </div>
+            <button class="btn-primary" onclick="alterarSenha()" style="margin-bottom: 15px;" aria-label="Atualizar senha do modo administrador">Atualizar Senha</button>
+
+            <div style="background: #f0f8ff; padding: 12px; border-radius: 6px; margin-bottom: 20px;">
+                <h4 style="margin-bottom: 10px;">Recuperação de Senha</h4>
+                <div class="form-group">
+                    <label>Pergunta de Segurança (Opção A)</label>
+                    <input type="text" id="inputPerguntaSeguranca" placeholder="Ex: Qual é seu sobrenome?" value="${perguntaSeguranca || ''}">
+                </div>
+                <div class="form-group">
+                    <label>Resposta</label>
+                    <input type="text" id="inputRespostaSeguranca" placeholder="Digite a resposta" value="${respostaSeguranca || ''}">
+                </div>
+                <div class="form-group">
+                    <label>Dica de Senha (Opção B)</label>
+                    <input type="text" id="inputDicaSenha" placeholder="Ex: Começa com 1 e tem 4 dígitos" value="${dicaSenha || ''}">
+                </div>
+                <button class="btn-primary" onclick="salvarRecuperacaoSenha()" style="width: 100%; margin-bottom: 20px;" aria-label="Salvar opções de recuperação de senha">Salvar Opções de Recuperação</button>
+            </div>
+
+            <h3 style="margin-bottom: 10px;">🚤 Lanchas</h3>
+            <div id="listaLanchasConfig" style="margin-bottom: 15px;"></div>
+            <div class="form-group">
+                <label>Nova Lancha</label>
+                <input type="text" id="inputNovaLancha" placeholder="Nome da lancha">
+            </div>
+            <button class="btn-primary" onclick="adicionarNovaLancha()" aria-label="Adicionar nova lancha">Adicionar Lancha</button>
+
+            <h3 style="margin-top: 20px; margin-bottom: 10px;">👥 Vendedores</h3>
+            <div id="listaVendedoresConfig" style="margin-bottom: 15px;"></div>
+            <div class="form-group">
+                <label>Novo Vendedor</label>
+                <input type="text" id="inputNovoVendedor" placeholder="Nome do vendedor">
+            </div>
+            <button class="btn-primary" onclick="adicionarNovoVendedor()" aria-label="Adicionar novo vendedor">Adicionar Vendedor</button>
+
+            <h3 style="margin-top: 20px; margin-bottom: 10px;">📥 Backup</h3>
+            <button class="btn-primary" onclick="exportarDados()" style="width: 100%;" aria-label="Fazer backup de todos os dados em arquivo JSON">📥 Fazer Backup (JSON)</button>
+
+            <div class="modal-actions" style="margin-top: 20px;">
+                <button class="btn-cancel" onclick="fecharModalConfig()" aria-label="Fechar configurações">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL EDITAR AGENDAMENTO -->
+    <div class="modal" id="modalEditar">
+        <div class="modal-content">
+            <h2>✏️ Editar Agendamento</h2>
+            <div class="form-group">
+                <label>Lancha</label>
+                <select id="editLancha" required>
+                    <option value="">Escolha a lancha</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Vendedor</label>
+                <select id="editVendedor" required>
+                    <option value="">Escolha o vendedor</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Data</label>
+                    <input type="date" id="editData" required>
+                </div>
+                <div class="form-group">
+                    <label>Qtd. Pessoas</label>
+                    <input type="number" id="editQtdPessoas" placeholder="0" min="1" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Valor Solicitado</label>
+                    <input type="number" id="editPedido" placeholder="0.00" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label>Valor Recebido</label>
+                    <input type="number" id="editRecebido" placeholder="0.00" step="0.01" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>📝 Observações (opcional)</label>
+                <input type="text" id="editObs" placeholder="Nome, telefone, aniversário, notas...">
+            </div>
+            <div class="modal-actions">
+                <button class="btn-primary" onclick="salvarEdicao()" aria-label="Salvar edição do agendamento">Salvar</button>
+                <button class="btn-cancel" onclick="fecharModalEditar()" aria-label="Cancelar edição">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let SENHA = localStorage.getItem('app_senha') || "1234";
+        let editMode = false;
+        let lanchas = [];
+        let vendedores = [];
+        let agendamentosAbertos = [];
+        let agendamentosRealizados = [];
+        let despesas = [];
+        let agendamentoEditandoId = null;
+        let filtrosAtivos = { dataInicial: null, dataFinal: null, lancha: null, vendedor: null };
+
+        // Dados de segurança
+        let perguntaSeguranca = localStorage.getItem('pergunta_seguranca') || null;
+        let respostaSeguranca = localStorage.getItem('resposta_seguranca') || null;
+        let dicaSenha = localStorage.getItem('dica_senha') || null;
+
+        function formatarData(dataString) {
+            // Converte YYYY-MM-DD para DD/MM/YYYY sem timezone
+            if (!dataString) return '';
+            const [ano, mes, dia] = dataString.split('-');
+            return `${dia}/${mes}/${ano}`;
+        }
+
+        function formatarDataISO(isoString) {
+            // Converte ISO string (2026-09-01T15:30:00.000Z) para DD/MM/YYYY
+            if (!isoString) return '';
+            const data = isoString.split('T')[0];
+            return formatarData(data);
+        }
+
+        function getLanchasDoStorage() {
+            const stored = localStorage.getItem('lanchas_list');
+            if (stored) {
+                lanchas = JSON.parse(stored);
+            } else {
+                lanchas = [
+                    { id: 'lancha1', nome: 'Sheiknah' },
+                    { id: 'lancha2', nome: 'Carpe Diem' },
+                    { id: 'lancha3', nome: 'Mais C' }
+                ];
+                localStorage.setItem('lanchas_list', JSON.stringify(lanchas));
+            }
+            updateSelectLancha();
+            updateLanchaFiltro();
+        }
+
+        function getVendedoresDoStorage() {
+            const stored = localStorage.getItem('vendedores_list');
+            if (stored) {
+                vendedores = JSON.parse(stored);
+            } else {
+                vendedores = [];
+                localStorage.setItem('vendedores_list', JSON.stringify(vendedores));
+            }
+            updateSelectVendedor();
+            updateVendedorFiltro();
+        }
+
+        function getAgendamentosDoStorage() {
+            const abertos = localStorage.getItem('agendamentos_abertos');
+            const realizados = localStorage.getItem('agendamentos_realizados');
+            agendamentosAbertos = abertos ? JSON.parse(abertos) : [];
+            agendamentosRealizados = realizados ? JSON.parse(realizados) : [];
+        }
+
+        function saveAgendamentos() {
+            localStorage.setItem('agendamentos_abertos', JSON.stringify(agendamentosAbertos));
+            localStorage.setItem('agendamentos_realizados', JSON.stringify(agendamentosRealizados));
+        }
+
+        function getDespesasDoStorage() {
+            const stored = localStorage.getItem('despesas_list');
+            despesas = stored ? JSON.parse(stored) : [];
+        }
+
+        function saveDespesas() {
+            localStorage.setItem('despesas_list', JSON.stringify(despesas));
+        }
+
+        function updateSelectLancha() {
+            const select = document.getElementById('selectLancha');
+            const editSelect = document.getElementById('editLancha');
+            const html = '<option value="">Escolha a lancha</option>' +
+                lanchas.map(l => `<option value="${l.id}">${l.nome}</option>`).join('');
+            select.innerHTML = html;
+            editSelect.innerHTML = html;
+        }
+
+        function updateSelectVendedor() {
+            const select = document.getElementById('selectVendedor');
+            const editSelect = document.getElementById('editVendedor');
+            const html = '<option value="">Escolha o vendedor</option>' +
+                vendedores.map(v => `<option value="${v.id}">${v.nome}</option>`).join('');
+            select.innerHTML = html;
+            editSelect.innerHTML = html;
+        }
+
+        function updateLanchaFiltro() {
+            const select = document.getElementById('lanchaFiltro');
+            if (select) {
+                select.innerHTML = '<option value="">Todas</option>' +
+                    lanchas.map(l => `<option value="${l.id}">${l.nome}</option>`).join('');
+            }
+        }
+
+        function updateVendedorFiltro() {
+            const select = document.getElementById('vendedorFiltro');
+            if (select) {
+                select.innerHTML = '<option value="">Todos</option>' +
+                    vendedores.map(v => `<option value="${v.id}">${v.nome}</option>`).join('');
+            }
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(tab).classList.add('active');
+            event.target.classList.add('active');
+
+            if (tab === 'abertos') {
+                renderAbertos();
+            } else if (tab === 'realizados') {
+                renderRealizados();
+            } else if (tab === 'extrato') {
+                renderExtrato();
+                updateExtratoLanchaFilter();
+            }
+        }
+
+        function toggleEdit() {
+            if (editMode) {
+                editMode = false;
+                document.getElementById('status').textContent = 'Visualização';
+                document.getElementById('formAbertos').classList.remove('show');
+                document.getElementById('btnConfig').style.display = 'none';
+                document.getElementById('dashboardResumo').style.display = 'none';
+                document.getElementById('tabExtrato').style.display = 'none';
+                mostrarToast('Modo edição desativado');
+                renderAbertos();
+                renderRealizados();
+            } else {
+                document.getElementById('modalSenha').classList.add('show');
+                document.getElementById('inputSenha').focus();
+            }
+        }
+
+        function abrirConfiguracao() {
+            renderConfigLanchas();
+            renderConfigVendedores();
+            document.getElementById('inputNovaSenha').value = '';
+            document.getElementById('modalConfig').classList.add('show');
+        }
+
+        function alterarSenha() {
+            const novaSenha = document.getElementById('inputNovaSenha').value.trim();
+            if (!novaSenha) {
+                mostrarToast('Digite uma nova senha');
+                return;
+            }
+            if (novaSenha.length < 4) {
+                mostrarToast('Senha deve ter pelo menos 4 caracteres');
+                return;
+            }
+            SENHA = novaSenha;
+            localStorage.setItem('app_senha', novaSenha);
+            document.getElementById('inputNovaSenha').value = '';
+            mostrarToast('Senha atualizada com sucesso!');
+        }
+
+        function salvarRecuperacaoSenha() {
+            const pergunta = document.getElementById('inputPerguntaSeguranca').value.trim();
+            const resposta = document.getElementById('inputRespostaSeguranca').value.trim();
+            const dica = document.getElementById('inputDicaSenha').value.trim();
+
+            if (!pergunta || !resposta) {
+                if (pergunta && !resposta) {
+                    mostrarToast('Digite a resposta para a pergunta de segurança');
+                    return;
+                }
+                if (!pergunta && resposta) {
+                    mostrarToast('Digite uma pergunta de segurança');
+                    return;
+                }
+            }
+
+            if (pergunta && resposta) {
+                perguntaSeguranca = pergunta;
+                respostaSeguranca = resposta;
+                localStorage.setItem('pergunta_seguranca', pergunta);
+                localStorage.setItem('resposta_seguranca', resposta);
+            }
+
+            if (dica) {
+                dicaSenha = dica;
+                localStorage.setItem('dica_senha', dica);
+            }
+
+            mostrarToast('Opções de recuperação salvas!');
+        }
+
+        function renderConfigLanchas() {
+            const lista = document.getElementById('listaLanchasConfig');
+            lista.innerHTML = lanchas.map(l => `
+                <div style="background: #f9f9f9; padding: 10px; border-radius: 4px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="flex: 1;">
+                        <input type="text" value="${l.nome}" id="edit-lancha-${l.id}" style="width: 100%; padding: 5px; border: 1px solid #ddd; border-radius: 3px;">
+                    </div>
+                    <button class="btn-delete" onclick="deletarLancha('${l.id}')" aria-label="Deletar lancha">🗑️</button>
+                </div>
+                <button style="width: 100%; padding: 5px; margin-bottom: 10px; background: #3498db; color: white; border: none; border-radius: 3px; cursor: pointer;" onclick="salvarNomeLancha('${l.id}')">Salvar</button>
+            `).join('');
+        }
+
+        function renderConfigVendedores() {
+            const lista = document.getElementById('listaVendedoresConfig');
+            if (vendedores.length === 0) {
+                lista.innerHTML = '<div style="color: #999; text-align: center; padding: 10px;">Nenhum vendedor adicionado</div>';
+                return;
+            }
+            lista.innerHTML = vendedores.map(v => `
+                <div style="background: #f9f9f9; padding: 10px; border-radius: 4px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="flex: 1;">
+                        <input type="text" value="${v.nome}" id="edit-vend-${v.id}" style="width: 100%; padding: 5px; border: 1px solid #ddd; border-radius: 3px; font-size: 14px;">
+                    </div>
+                    <button class="btn-delete" onclick="deletarVendedor('${v.id}')" aria-label="Deletar vendedor">🗑️</button>
+                </div>
+                <button style="width: 100%; padding: 5px; margin-bottom: 10px; background: #3498db; color: white; border: none; border-radius: 3px; cursor: pointer; font-weight: bold;" onclick="salvarNomeVendedor('${v.id}')">Salvar</button>
+            `).join('');
+        }
+
+        function salvarNomeLancha(id) {
+            const novoNome = document.getElementById(`edit-lancha-${id}`).value;
+            if (novoNome.trim()) {
+                const idx = lanchas.findIndex(l => l.id === id);
+                lanchas[idx].nome = novoNome;
+                localStorage.setItem('lanchas_list', JSON.stringify(lanchas));
+                updateSelectLancha();
+                updateLanchaFiltro();
+                renderConfigLanchas();
+                mostrarToast('Lancha atualizada!');
+            }
+        }
+
+        function salvarNomeVendedor(id) {
+            const novoNome = document.getElementById(`edit-vend-${id}`).value;
+            if (novoNome.trim()) {
+                const idx = vendedores.findIndex(v => v.id === id);
+                vendedores[idx].nome = novoNome;
+                localStorage.setItem('vendedores_list', JSON.stringify(vendedores));
+                updateSelectVendedor();
+                updateVendedorFiltro();
+                renderConfigVendedores();
+                mostrarToast('Vendedor atualizado!');
+            }
+        }
+
+        function deletarLancha(id) {
+            if (lanchas.length <= 1) {
+                mostrarToast('Você precisa ter pelo menos uma lancha!');
+                return;
+            }
+            if (confirm('Deletar esta lancha e seus agendamentos?')) {
+                lanchas = lanchas.filter(l => l.id !== id);
+                agendamentosAbertos = agendamentosAbertos.filter(a => a.lanchaId !== id);
+                agendamentosRealizados = agendamentosRealizados.filter(a => a.lanchaId !== id);
+                saveAgendamentos();
+                localStorage.setItem('lanchas_list', JSON.stringify(lanchas));
+                updateSelectLancha();
+                updateLanchaFiltro();
+                renderConfigLanchas();
+                mostrarToast('Lancha deletada!');
+            }
+        }
+
+        function deletarVendedor(id) {
+            if (confirm('Deletar este vendedor?')) {
+                vendedores = vendedores.filter(v => v.id !== id);
+                localStorage.setItem('vendedores_list', JSON.stringify(vendedores));
+                updateSelectVendedor();
+                updateVendedorFiltro();
+                renderConfigVendedores();
+                mostrarToast('Vendedor deletado!');
+            }
+        }
+
+        function adicionarNovaLancha() {
+            const nome = document.getElementById('inputNovaLancha').value.trim();
+            if (!nome) {
+                mostrarToast('Digite um nome para a lancha');
+                return;
+            }
+
+            const id = 'lancha_' + Date.now();
+            lanchas.push({ id, nome });
+            localStorage.setItem('lanchas_list', JSON.stringify(lanchas));
+            document.getElementById('inputNovaLancha').value = '';
+            updateSelectLancha();
+            updateLanchaFiltro();
+            renderConfigLanchas();
+            mostrarToast('Lancha adicionada!');
+        }
+
+        function adicionarNovoVendedor() {
+            const nome = document.getElementById('inputNovoVendedor').value.trim();
+            if (!nome) {
+                mostrarToast('Digite um nome para o vendedor');
+                return;
+            }
+
+            const id = 'vend_' + Date.now();
+            vendedores.push({ id, nome });
+            localStorage.setItem('vendedores_list', JSON.stringify(vendedores));
+            document.getElementById('inputNovoVendedor').value = '';
+            updateSelectVendedor();
+            updateVendedorFiltro();
+            renderConfigVendedores();
+            mostrarToast('Vendedor adicionado!');
+        }
+
+        function fecharModalConfig() {
+            document.getElementById('modalConfig').classList.remove('show');
+        }
+
+        function fecharModal() {
+            document.getElementById('modalSenha').classList.remove('show');
+            document.getElementById('inputSenha').value = '';
+        }
+
+        function verificarSenha() {
+            const senha = document.getElementById('inputSenha').value;
+            if (senha === SENHA) {
+                editMode = true;
+                document.getElementById('status').textContent = '🔐 Modo Administrador';
+                document.getElementById('formAbertos').classList.add('show');
+                document.getElementById('btnConfig').style.display = 'block';
+                document.getElementById('dashboardResumo').style.display = 'block';
+                document.getElementById('tabExtrato').style.display = 'inline-block';
+                fecharModal();
+                renderAbertos();
+                renderRealizados();
+                renderExtrato();
+                renderDashboard();
+                mostrarToast('Modo edição ativado');
+            } else {
+                mostrarToast('Senha incorreta!');
+                document.getElementById('inputSenha').value = '';
+            }
+        }
+
+        function abrirModalRecuperarSenha() {
+            fecharModal();
+            let html = '<p style="margin-bottom: 15px; font-size: 14px;">Escolha uma opção para recuperar sua senha:</p>';
+
+            if (perguntaSeguranca && respostaSeguranca) {
+                html += `
+                    <div style="margin-bottom: 15px;">
+                        <h4 style="margin-bottom: 10px;">Opção A - Pergunta de Segurança</h4>
+                        <p style="font-size: 13px; margin-bottom: 8px;"><strong>${perguntaSeguranca}</strong></p>
+                        <input type="text" id="respostaInput" placeholder="Digite sua resposta" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 8px;">
+                        <button class="btn-primary" onclick="verificarResposta()" style="width: 100%;" aria-label="Verificar resposta da pergunta de segurança">Verificar</button>
+                    </div>
+                `;
+            }
+
+            if (dicaSenha) {
+                html += `
+                    <div>
+                        <h4 style="margin-bottom: 10px;">Opção B - Dica de Senha</h4>
+                        <p style="font-size: 13px; background: #f0f8ff; padding: 10px; border-radius: 4px; margin-bottom: 8px;">💡 ${dicaSenha}</p>
+                    </div>
+                `;
+            }
+
+            if (!perguntaSeguranca && !dicaSenha) {
+                html += '<p style="color: #e74c3c;">⚠️ Nenhuma opção de recuperação configurada. Configure no menu de Configurações.</p>';
+            }
+
+            document.getElementById('opcoesSenhaDiv').innerHTML = html;
+            document.getElementById('modalRecuperarSenha').classList.add('show');
+        }
+
+        function fecharModalRecuperarSenha() {
+            document.getElementById('modalRecuperarSenha').classList.remove('show');
+            document.getElementById('inputSenha').focus();
+        }
+
+        function verificarResposta() {
+            const resposta = document.getElementById('respostaInput').value.toLowerCase().trim();
+            if (resposta === respostaSeguranca.toLowerCase().trim()) {
+                fecharModalRecuperarSenha();
+                mostrarToast('✅ Resposta correta! Tente a senha novamente.');
+            } else {
+                mostrarToast('❌ Resposta incorreta!');
+                document.getElementById('respostaInput').value = '';
+            }
+        }
+
+        function abrirModalAdicionarDespesa() {
+            const hoje = new Date();
+            const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+            document.getElementById('despesaMes').value = mesAtual;
+            updateSelectDespesaLancha();
+            document.getElementById('modalAdicionarDespesa').classList.add('show');
+        }
+
+        function fecharModalAdicionarDespesa() {
+            document.getElementById('modalAdicionarDespesa').classList.remove('show');
+            document.getElementById('despesaMes').value = '';
+            document.getElementById('despesaLancha').value = 'todas';
+            document.getElementById('despesaCategoria').value = '';
+            document.getElementById('despesaValor').value = '';
+            document.getElementById('despesaDescricao').value = '';
+        }
+
+        function updateSelectDespesaLancha() {
+            const select = document.getElementById('despesaLancha');
+            select.innerHTML = '<option value="todas">Todas as lanchas</option>';
+            lanchas.forEach(l => {
+                select.innerHTML += `<option value="${l.id}">${l.nome}</option>`;
+            });
+        }
+
+        function salvarDespesa() {
+            const mes = document.getElementById('despesaMes').value;
+            const lanchaId = document.getElementById('despesaLancha').value;
+            const categoria = document.getElementById('despesaCategoria').value;
+            const valor = parseFloat(document.getElementById('despesaValor').value);
+            const descricao = document.getElementById('despesaDescricao').value.trim();
+
+            if (!mes || !categoria || valor <= 0) {
+                mostrarToast('Preencha todos os campos obrigatórios');
+                return;
+            }
+
+            despesas.push({
+                id: Date.now(),
+                mes,
+                lanchaId,
+                categoria,
+                valor,
+                descricao,
+                dataCriacao: new Date().toISOString()
+            });
+
+            saveDespesas();
+            fecharModalAdicionarDespesa();
+            renderExtrato();
+            mostrarToast('Despesa adicionada!');
+        }
+
+        function deletarDespesa(id) {
+            if (!confirm('Tem certeza que deseja deletar esta despesa?')) {
+                return;
+            }
+            despesas = despesas.filter(d => d.id !== id);
+            saveDespesas();
+            renderExtrato();
+            mostrarToast('Despesa deletada!');
+        }
+
+        function addAgendamento() {
+            if (!editMode) {
+                mostrarToast('Ative o modo edição');
+                return;
+            }
+
+            const lanchaId = document.getElementById('selectLancha').value;
+            const vendedorId = document.getElementById('selectVendedor').value;
+            const data = document.getElementById('dataAbertos').value;
+            const qtdPessoas = parseInt(document.getElementById('qtdPessoasAbertos').value) || 0;
+            const pedido = parseFloat(document.getElementById('pedAbertos').value) || 0;
+            const recebido = parseFloat(document.getElementById('recAbertos').value) || 0;
+
+            if (!lanchaId || !vendedorId || !data || qtdPessoas <= 0 || pedido <= 0) {
+                mostrarToast('Preencha todos os campos');
+                return;
+            }
+
+            const lanchaObj = lanchas.find(l => l.id === lanchaId);
+            const vendedorObj = vendedores.find(v => v.id === vendedorId);
+
+            agendamentosAbertos.push({
+                id: Date.now(),
+                lanchaId,
+                lanchaNome: lanchaObj.nome,
+                vendedorId,
+                vendedorNome: vendedorObj.nome,
+                data,
+                qtdPessoas,
+                pedido,
+                recebido,
+                obs: document.getElementById('obsAbertos').value.trim(),
+                dataCriacao: new Date().toISOString()
+            });
+
+            saveAgendamentos();
+            document.getElementById('selectLancha').value = '';
+            document.getElementById('selectVendedor').value = '';
+            document.getElementById('dataAbertos').value = '';
+            document.getElementById('qtdPessoasAbertos').value = '';
+            document.getElementById('pedAbertos').value = '';
+            document.getElementById('recAbertos').value = '';
+            document.getElementById('obsAbertos').value = '';
+            renderAbertos();
+            mostrarToast('Agendamento adicionado!');
+        }
+
+        function abrirModalEditar(id) {
+            const agend = agendamentosAbertos.find(a => a.id === id);
+            if (!agend) return;
+
+            agendamentoEditandoId = id;
+            document.getElementById('editLancha').value = agend.lanchaId;
+            document.getElementById('editVendedor').value = agend.vendedorId;
+            document.getElementById('editData').value = agend.data;
+            document.getElementById('editQtdPessoas').value = agend.qtdPessoas || '';
+            document.getElementById('editPedido').value = agend.pedido;
+            document.getElementById('editRecebido').value = agend.recebido;
+            document.getElementById('editObs').value = agend.obs || '';
+            document.getElementById('modalEditar').classList.add('show');
+        }
+
+        function abrirModalEditarRealizado(id) {
+            const agend = agendamentosRealizados.find(a => a.id === id);
+            if (!agend) return;
+
+            agendamentoEditandoId = id;
+            document.getElementById('editLancha').value = agend.lanchaId;
+            document.getElementById('editVendedor').value = agend.vendedorId;
+            document.getElementById('editData').value = agend.data;
+            document.getElementById('editQtdPessoas').value = agend.qtdPessoas || '';
+            document.getElementById('editPedido').value = agend.pedido;
+            document.getElementById('editRecebido').value = agend.recebido;
+            document.getElementById('editObs').value = agend.obs || '';
+            document.getElementById('modalEditar').classList.add('show');
+        }
+
+        function salvarEdicao() {
+            if (!agendamentoEditandoId) return;
+
+            const lanchaId = document.getElementById('editLancha').value;
+            const vendedorId = document.getElementById('editVendedor').value;
+            const data = document.getElementById('editData').value;
+            const qtdPessoas = parseInt(document.getElementById('editQtdPessoas').value) || 0;
+            const pedido = parseFloat(document.getElementById('editPedido').value) || 0;
+            const recebido = parseFloat(document.getElementById('editRecebido').value) || 0;
+            const obs = document.getElementById('editObs').value.trim();
+
+            if (!lanchaId || !vendedorId || !data || qtdPessoas <= 0 || pedido <= 0) {
+                mostrarToast('Preencha todos os campos');
+                return;
+            }
+
+            const lanchaObj = lanchas.find(l => l.id === lanchaId);
+            const vendedorObj = vendedores.find(v => v.id === vendedorId);
+
+            // Verifica se está em abertos ou realizados
+            let idxAbertos = agendamentosAbertos.findIndex(a => a.id === agendamentoEditandoId);
+            let idxRealizados = agendamentosRealizados.findIndex(a => a.id === agendamentoEditandoId);
+
+            if (idxAbertos !== -1) {
+                agendamentosAbertos[idxAbertos] = {
+                    ...agendamentosAbertos[idxAbertos],
+                    lanchaId,
+                    lanchaNome: lanchaObj.nome,
+                    vendedorId,
+                    vendedorNome: vendedorObj.nome,
+                    data,
+                    qtdPessoas,
+                    pedido,
+                    recebido,
+                    obs
+                };
+                renderAbertos();
+            } else if (idxRealizados !== -1) {
+                agendamentosRealizados[idxRealizados] = {
+                    ...agendamentosRealizados[idxRealizados],
+                    lanchaId,
+                    lanchaNome: lanchaObj.nome,
+                    vendedorId,
+                    vendedorNome: vendedorObj.nome,
+                    data,
+                    qtdPessoas,
+                    pedido,
+                    recebido,
+                    obs
+                };
+                renderRealizados();
+            }
+
+            saveAgendamentos();
+            fecharModalEditar();
+            mostrarToast('Agendamento atualizado!');
+        }
+
+        function fecharModalEditar() {
+            agendamentoEditandoId = null;
+            document.getElementById('editObs').value = '';
+            document.getElementById('modalEditar').classList.remove('show');
+        }
+
+        function marcarRealizado(id) {
+            const idx = agendamentosAbertos.findIndex(a => a.id === id);
+            if (idx !== -1) {
+                const agend = agendamentosAbertos[idx];
+                agendamentosRealizados.push({
+                    ...agend,
+                    dataRealizacao: new Date().toISOString()
+                });
+                agendamentosAbertos.splice(idx, 1);
+                saveAgendamentos();
+                renderAbertos();
+                mostrarToast('Agendamento marcado como realizado!');
+            }
+        }
+
+        function voltarParaAberto(id) {
+            const idx = agendamentosRealizados.findIndex(a => a.id === id);
+            if (idx !== -1) {
+                const agend = agendamentosRealizados[idx];
+                agendamentosAbertos.push(agend);
+                agendamentosRealizados.splice(idx, 1);
+                saveAgendamentos();
+                renderRealizados();
+                mostrarToast('Agendamento retornado para aberto!');
+            }
+        }
+
+        function deletarAgendamento(id, tipo) {
+            if (confirm('Deletar agendamento?')) {
+                if (tipo === 'aberto') {
+                    agendamentosAbertos = agendamentosAbertos.filter(a => a.id !== id);
+                } else {
+                    agendamentosRealizados = agendamentosRealizados.filter(a => a.id !== id);
+                }
+                saveAgendamentos();
+                renderAbertos();
+                renderRealizados();
+                mostrarToast('Agendamento deletado!');
+            }
+        }
+
+        function aplicarFiltros() {
+            // Filtros removidos da interface principal
+            // Agora disponível apenas na aba Disponibilidade
+            renderAbertos();
+        }
+
+        function filtrarAgendamentos(agendamentos) {
+            return agendamentos.filter(a => {
+                if (filtrosAtivos.dataInicial && new Date(a.data) < new Date(filtrosAtivos.dataInicial)) return false;
+                if (filtrosAtivos.dataFinal && new Date(a.data) > new Date(filtrosAtivos.dataFinal)) return false;
+                if (filtrosAtivos.lancha && a.lanchaId !== filtrosAtivos.lancha) return false;
+                if (filtrosAtivos.vendedor && a.vendedorId !== filtrosAtivos.vendedor) return false;
+                return true;
+            });
+        }
+
+        function renderAbertos() {
+            const agendamentosFiltrados = filtrarAgendamentos(agendamentosAbertos);
+            const list = document.getElementById('listaAbertos');
+            const summary = document.getElementById('summaryAbertos');
+
+            if (agendamentosFiltrados.length === 0) {
+                list.innerHTML = '<div class="empty">✨ Nenhum agendamento encontrado</div>';
+            } else {
+                const sorted = [...agendamentosFiltrados].sort((a, b) => new Date(a.data) - new Date(b.data));
+                const grouped = {};
+
+                sorted.forEach(a => {
+                    if (!grouped[a.lanchaId]) {
+                        grouped[a.lanchaId] = [];
+                    }
+                    grouped[a.lanchaId].push(a);
+                });
+
+                list.innerHTML = Object.keys(grouped).map(lanchaId => {
+                    const lanchaAgends = grouped[lanchaId];
+                    const lanchaObj = lanchas.find(l => l.id === lanchaId);
+
+                    return `
+                        <div class="lancha-group">
+                            <div class="lancha-group-title">🚤 ${lanchaObj?.nome || 'Lancha Desconhecida'}</div>
+                            ${lanchaAgends.map(a => {
+                                const data = formatarData(a.data);
+                                const falta = a.pedido - a.recebido;
+                                return `
+                                    <div class="agendamento">
+                                        <div class="agendamento-header">
+                                            <span class="agendamento-data">${data}</span>
+                                        </div>
+                                        <div class="agendamento-vendedor">👤 ${a.vendedorNome} | 👥 ${a.qtdPessoas} pessoa(s)</div>
+                                        ${a.obs ? `<div style="font-size: 13px; color: #666; margin-top: 6px; padding: 8px; background: #f0f8ff; border-radius: 4px;">📝 ${a.obs}</div>` : ''}
+                                        <div class="agendamento-valores">
+                                            <div class="valor">
+                                                <span class="valor-label">Valor Solicitado:</span>
+                                                <span class="valor-amount">R$ ${a.pedido.toFixed(2)}</span>
+                                            </div>
+                                            <div class="valor">
+                                                <span class="valor-label">Valor Recebido:</span>
+                                                <span class="valor-amount">R$ ${a.recebido.toFixed(2)}</span>
+                                            </div>
+                                            <div class="valor">
+                                                <span class="valor-label">Valor a Receber:</span>
+                                                <span class="valor-amount falta">R$ ${falta.toFixed(2)}</span>
+                                            </div>
+                                        </div>
+                                        <div class="agendamento-actions">
+                                            ${editMode ? `<button class="btn-realizado" onclick="gerarReciboAberto(${a.id})" aria-label="Gerar recibo para este agendamento">📄 Recibo</button>` : ''}
+                                            ${editMode ? `<button class="btn-realizado" onclick="marcarRealizado(${a.id})" aria-label="Marcar agendamento como realizado">✅ Realizado</button>` : ''}
+                                            ${editMode ? `<button class="btn-editar" onclick="abrirModalEditar(${a.id})" aria-label="Editar agendamento">✏️ Editar</button>` : ''}
+                                            ${editMode ? `<button class="btn-delete" onclick="deletarAgendamento(${a.id}, 'aberto')" aria-label="Deletar agendamento">🗑️ Deletar</button>` : ''}
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            let totalPedido = 0, totalRecebido = 0;
+            agendamentosFiltrados.forEach(a => {
+                totalPedido += a.pedido;
+                totalRecebido += a.recebido;
+            });
+            const totalFalta = totalPedido - totalRecebido;
+
+            summary.innerHTML = `
+                <div class="summary-box">
+                    <h3>Valor Solicitado</h3>
+                    <div class="value">R$ ${totalPedido.toFixed(2)}</div>
+                </div>
+                <div class="summary-box">
+                    <h3>Valor Recebido</h3>
+                    <div class="value">R$ ${totalRecebido.toFixed(2)}</div>
+                </div>
+                <div class="summary-box">
+                    <h3>Valor a Receber</h3>
+                    <div class="value">R$ ${totalFalta.toFixed(2)}</div>
+                </div>
+            `;
+        }
+
+        function renderRealizados() {
+            const list = document.getElementById('listaRealizados');
+            const summary = document.getElementById('summaryRealizados');
+
+            if (agendamentosRealizados.length === 0) {
+                list.innerHTML = '<div class="empty">Nenhum agendamento realizado</div>';
+            } else {
+                const sorted = [...agendamentosRealizados].sort((a, b) => new Date(b.dataRealizacao) - new Date(a.dataRealizacao));
+                const grouped = {};
+
+                sorted.forEach(a => {
+                    if (!grouped[a.lanchaId]) {
+                        grouped[a.lanchaId] = [];
+                    }
+                    grouped[a.lanchaId].push(a);
+                });
+
+                list.innerHTML = Object.keys(grouped).map(lanchaId => {
+                    const lanchaAgends = grouped[lanchaId];
+                    const lanchaObj = lanchas.find(l => l.id === lanchaId);
+
+                    return `
+                        <div class="lancha-group">
+                            <div class="lancha-group-title">🚤 ${lanchaObj?.nome || 'Lancha Desconhecida'}</div>
+                            ${lanchaAgends.map(a => {
+                                const data = formatarData(a.data);
+                                const falta = a.pedido - a.recebido;
+                                return `
+                                    <div class="agendamento" style="border-left-color: #95a5a6;">
+                                        <div class="agendamento-header">
+                                            <span class="agendamento-data">${data}</span>
+                                        </div>
+                                        <div class="agendamento-vendedor">👤 ${a.vendedorNome} | 👥 ${a.qtdPessoas} pessoa(s)</div>
+                                        ${a.obs ? `<div style="font-size: 13px; color: #666; margin-top: 6px; padding: 8px; background: #f0f8ff; border-radius: 4px;">📝 ${a.obs}</div>` : ''}
+                                        <div class="agendamento-valores">
+                                            <div class="valor">
+                                                <span class="valor-label">Valor Solicitado:</span>
+                                                <span class="valor-amount">R$ ${a.pedido.toFixed(2)}</span>
+                                            </div>
+                                            <div class="valor">
+                                                <span class="valor-label">Valor Recebido:</span>
+                                                <span class="valor-amount">R$ ${a.recebido.toFixed(2)}</span>
+                                            </div>
+                                            <div class="valor">
+                                                <span class="valor-label">Valor a Receber:</span>
+                                                <span class="valor-amount falta">R$ ${falta.toFixed(2)}</span>
+                                            </div>
+                                        </div>
+                                        <div class="agendamento-actions">
+                                            ${editMode ? `<button class="btn-realizado" onclick="gerarRecibo(${a.id})" aria-label="Gerar recibo para este agendamento">📄 Recibo</button>` : ''}
+                                            ${editMode ? `<button class="btn-voltar" onclick="voltarParaAberto(${a.id})" aria-label="Retornar agendamento para aberto">↩️ Voltar</button>` : ''}
+                                            ${editMode ? `<button class="btn-editar" onclick="abrirModalEditarRealizado(${a.id})" aria-label="Editar agendamento">✏️ Editar</button>` : ''}
+                                            ${editMode ? `<button class="btn-delete" onclick="deletarAgendamento(${a.id}, 'realizado')" aria-label="Deletar agendamento">🗑️ Deletar</button>` : ''}
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            let totalPedido = 0, totalRecebido = 0;
+            agendamentosRealizados.forEach(a => {
+                totalPedido += a.pedido;
+                totalRecebido += a.recebido;
+            });
+            const totalFalta = totalPedido - totalRecebido;
+
+            summary.innerHTML = `
+                <div class="summary-box">
+                    <h3>Valor Solicitado</h3>
+                    <div class="value">R$ ${totalPedido.toFixed(2)}</div>
+                </div>
+                <div class="summary-box">
+                    <h3>Valor Recebido</h3>
+                    <div class="value">R$ ${totalRecebido.toFixed(2)}</div>
+                </div>
+                <div class="summary-box">
+                    <h3>Valor a Receber</h3>
+                    <div class="value">R$ ${totalFalta.toFixed(2)}</div>
+                </div>
+            `;
+        }
+
+        function getCodLancha(lanchaId) {
+            const lancha = lanchas.find(l => l.id === lanchaId);
+            if (!lancha) return 'REC';
+            return lancha.nome.substring(0, 3).toUpperCase();
+        }
+
+        function gerarNumeroRecibo(lanchaId) {
+            const codLancha = getCodLancha(lanchaId);
+            const counterKey = `recibo_counter_${lanchaId}`;
+            let counter = parseInt(localStorage.getItem(counterKey)) || 0;
+            counter++;
+            localStorage.setItem(counterKey, counter.toString());
+            return `${codLancha}-${String(counter).padStart(3, '0')}`;
+        }
+
+        function gerarReciboAberto(id) {
+            const agend = agendamentosAbertos.find(a => a.id === id);
+            if (!agend) return;
+            gerarReciboComAgendamento(agend, false);
+        }
+
+        function gerarRecibo(id) {
+            const agend = agendamentosRealizados.find(a => a.id === id);
+            if (!agend) return;
+            gerarReciboComAgendamento(agend, true);
+        }
+
+        function gerarReciboComAgendamento(agend, isRealizado) {
+            const data = formatarData(agend.data);
+            const saldo = agend.pedido - agend.recebido;
+            const statusTexto = isRealizado ? 'REALIZADO' : 'AGENDADO';
+            const corStatus = isRealizado ? '#27ae60' : '#3498db';
+            const numeroRecibo = gerarNumeroRecibo(agend.lanchaId);
+
+            const reciboHTML = `
+                <!DOCTYPE html>
+                <html lang="pt-BR">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Recibo #${numeroRecibo}</title>
+                    <style>
+                        * { margin: 0; padding: 0; box-sizing: border-box; }
+                        body {
+                            font-family: Arial, sans-serif;
+                            padding: 20px;
+                            background: #f5f5f5;
+                        }
+                        .recibo {
+                            background: white;
+                            padding: 30px;
+                            max-width: 500px;
+                            margin: 0 auto;
+                            border: 3px solid #1a5f7a;
+                            border-radius: 8px;
+                        }
+                        .recibo-header {
+                            text-align: center;
+                            border-bottom: 3px solid #1a5f7a;
+                            padding-bottom: 15px;
+                            margin-bottom: 20px;
+                        }
+                        .recibo-header h1 {
+                            font-size: 20px;
+                            color: #1a5f7a;
+                            margin-bottom: 5px;
+                        }
+                        .recibo-header p {
+                            font-size: 13px;
+                            color: #666;
+                        }
+                        .recibo-numero {
+                            text-align: center;
+                            font-size: 12px;
+                            color: #999;
+                            margin-bottom: 15px;
+                        }
+                        .recibo-line {
+                            display: flex;
+                            justify-content: space-between;
+                            padding: 10px 0;
+                            border-bottom: 1px solid #eee;
+                            font-size: 14px;
+                        }
+                        .recibo-line.total {
+                            font-weight: bold;
+                            border-top: 2px solid #1a5f7a;
+                            border-bottom: 2px solid #1a5f7a;
+                            padding: 12px 0;
+                            font-size: 16px;
+                        }
+                        .recibo-label {
+                            color: #666;
+                        }
+                        .recibo-value {
+                            font-weight: bold;
+                            color: #333;
+                            font-family: monospace;
+                        }
+                        .recibo-footer {
+                            text-align: center;
+                            font-size: 12px;
+                            color: #999;
+                            margin-top: 20px;
+                            padding-top: 15px;
+                            border-top: 1px solid #eee;
+                        }
+                        .btn-print {
+                            display: block;
+                            margin: 20px auto 0;
+                            padding: 10px 20px;
+                            background: #1a5f7a;
+                            color: white;
+                            border: none;
+                            border-radius: 4px;
+                            cursor: pointer;
+                            font-size: 14px;
+                            font-weight: bold;
+                        }
+                        @media print {
+                            body { background: white; padding: 0; }
+                            .btn-print { display: none; }
+                            .recibo { border: none; box-shadow: none; margin: 0; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="recibo">
+                        <div class="recibo-header">
+                            <h1>⛵ BABU LANCHAS</h1>
+                            <p>Recibo de Passeio</p>
+                            <p style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #1a5f7a; color: ${corStatus}; font-weight: bold; font-size: 14px;">${statusTexto}</p>
+                        </div>
+                        <div class="recibo-numero">Recibo #${numeroRecibo}</div>
+
+                        <div class="recibo-line">
+                            <span class="recibo-label">Lancha:</span>
+                            <span class="recibo-value">${agend.lanchaNome}</span>
+                        </div>
+                        <div class="recibo-line">
+                            <span class="recibo-label">Vendedor:</span>
+                            <span class="recibo-value">${agend.vendedorNome}</span>
+                        </div>
+                        <div class="recibo-line">
+                            <span class="recibo-label">Quantidade de Pessoas:</span>
+                            <span class="recibo-value">${agend.qtdPessoas || 0}</span>
+                        </div>
+                        <div class="recibo-line">
+                            <span class="recibo-label">Data do Passeio:</span>
+                            <span class="recibo-value">${data}</span>
+                        </div>
+                        ${agend.obs ? `
+                        <div class="recibo-line">
+                            <span class="recibo-label">Observações:</span>
+                            <span class="recibo-value">${agend.obs}</span>
+                        </div>
+                        ` : ''}
+
+                        <div style="height: 10px;"></div>
+
+                        <div class="recibo-line">
+                            <span class="recibo-label">Valor Solicitado:</span>
+                            <span class="recibo-value">R$ ${agend.pedido.toFixed(2)}</span>
+                        </div>
+                        <div class="recibo-line">
+                            <span class="recibo-label">Valor Recebido:</span>
+                            <span class="recibo-value">R$ ${agend.recebido.toFixed(2)}</span>
+                        </div>
+                        <div class="recibo-line total">
+                            <span class="recibo-label">Saldo:</span>
+                            <span class="recibo-value" style="color: ${saldo > 0 ? '#e74c3c' : '#27ae60'};">R$ ${saldo.toFixed(2)}</span>
+                        </div>
+
+                        <div style="height: 10px;"></div>
+
+                        ${isRealizado ? `
+                        <div class="recibo-line">
+                            <span class="recibo-label">Data de Realização:</span>
+                            <span class="recibo-value">${formatarDataISO(agend.dataRealizacao)}</span>
+                        </div>
+                        ` : ''}
+
+                        <div class="recibo-footer">
+                            <p>Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}</p>
+                            <p style="margin-top: 10px;">📱 Instagram: @babulanchas</p>
+                            <p style="margin-top: 8px;">Obrigado!</p>
+                        </div>
+                    </div>
+                    <button class="btn-print" onclick="window.print()">🖨️ Imprimir / Salvar como PDF</button>
+                </body>
+                </html>
+            `;
+
+            const blob = new Blob([reciboHTML], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            window.open(url, 'recibo', 'width=600,height=800');
+        }
+
+        function renderDisponibilidade() {
+            const mesFiltro = document.getElementById('mesFiltro').value;
+            if (!mesFiltro) {
+                mostrarToast('Selecione um mês');
+                return;
+            }
+
+            const [ano, mes] = mesFiltro.split('-');
+            const lista = document.getElementById('listaDisponibilidade');
+            const primeiroDia = new Date(ano, mes - 1, 1);
+            const ultimoDia = new Date(ano, mes, 0);
+            const diasNoMes = ultimoDia.getDate();
+
+            let html = '';
+
+            lanchas.forEach(lancha => {
+                const diasComAgendamento = new Map();
+                const agendamentosLancha = [...agendamentosAbertos, ...agendamentosRealizados].filter(a => a.lanchaId === lancha.id && a.data.startsWith(`${ano}-${String(mes).padStart(2, '0')}`));
+                agendamentosLancha.forEach(a => {
+                    const [aYear, aMes, aDay] = a.data.split('-').map(Number);
+                    const dia = aDay;
+                    if (!diasComAgendamento.has(dia)) {
+                        diasComAgendamento.set(dia, []);
+                    }
+                    diasComAgendamento.get(dia).push(a);
+                });
+
+                html += `
+                    <div class="lancha-group" style="margin-bottom: 20px;">
+                        <div class="lancha-group-title">🚤 ${lancha.nome}</div>
+                        <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; padding: 15px; background: white; border-radius: 6px;">
+                            <div style="text-align: center; font-weight: bold; color: #666; font-size: 12px;">Dom</div>
+                            <div style="text-align: center; font-weight: bold; color: #666; font-size: 12px;">Seg</div>
+                            <div style="text-align: center; font-weight: bold; color: #666; font-size: 12px;">Ter</div>
+                            <div style="text-align: center; font-weight: bold; color: #666; font-size: 12px;">Qua</div>
+                            <div style="text-align: center; font-weight: bold; color: #666; font-size: 12px;">Qui</div>
+                            <div style="text-align: center; font-weight: bold; color: #666; font-size: 12px;">Sex</div>
+                            <div style="text-align: center; font-weight: bold; color: #666; font-size: 12px;">Sab</div>
+                `;
+
+                // Dias vazios do início do mês
+                for (let i = 0; i < primeiroDia.getDay(); i++) {
+                    html += '<div></div>';
+                }
+
+                // Dias do mês
+                for (let dia = 1; dia <= diasNoMes; dia++) {
+                    const temAgendamento = diasComAgendamento.has(dia);
+                    const corFundo = temAgendamento ? '#e74c3c' : '#27ae60';
+                    const corTexto = temAgendamento ? 'white' : 'white';
+                    const iconAgendamento = temAgendamento ? '❌' : '✅';
+                    const dataFormatada = `${ano}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+
+                    html += `
+                        <div style="
+                            text-align: center;
+                            padding: 10px 5px;
+                            background: ${corFundo};
+                            color: ${corTexto};
+                            border-radius: 4px;
+                            font-weight: bold;
+                            font-size: 12px;
+                            cursor: pointer;
+                            transition: transform 0.2s;
+                        "
+                        onmouseover="this.style.transform='scale(1.1)'"
+                        onmouseout="this.style.transform='scale(1)'"
+                        onclick="verPreviewAgendamentos('${dataFormatada}', '${lancha.nome}', '${lancha.id}')">
+                            ${dia}<br><span style="font-size: 10px;">${iconAgendamento}</span>
+                        </div>
+                    `;
+                }
+
+                html += `</div>`;
+            });
+
+            lista.innerHTML = html.length > 0 ? html : '<div class="empty">Selecione um mês para ver disponibilidade</div>';
+        }
+
+        function verPreviewAgendamentos(data, lanchaNome, lanchaId) {
+            const agendamentos = [...agendamentosAbertos, ...agendamentosRealizados].filter(a => a.data === data && a.lanchaId === lanchaId);
+            if (agendamentos.length === 0) {
+                mostrarToast('Nenhum agendamento neste dia para esta lancha');
+                return;
+            }
+
+            let html = `<h2>📅 Agendamentos - ${formatarData(data)}</h2>
+                        <p style="margin-bottom: 15px; color: #666;"><strong>${lanchaNome}</strong></p>`;
+
+            agendamentos.forEach(a => {
+                const status = agendamentosAbertos.includes(a) ? '⏳ Aberto' : '✅ Realizado';
+                const corStatus = agendamentosAbertos.includes(a) ? '#3498db' : '#27ae60';
+                const saldo = a.pedido - a.recebido;
+
+                html += `
+                    <div style="background: #f9f9f9; padding: 12px; border-radius: 6px; margin-bottom: 10px; border-left: 4px solid ${corStatus};">
+                        <div style="font-weight: bold; color: ${corStatus}; margin-bottom: 8px;">${status}</div>
+                        <div style="font-size: 13px; margin-bottom: 6px;"><strong>Vendedor:</strong> ${a.vendedorNome}</div>
+                        <div style="font-size: 13px; margin-bottom: 6px;"><strong>Pessoas:</strong> ${a.qtdPessoas || 0}</div>
+                        <div style="font-size: 13px; margin-bottom: 6px;"><strong>Valor Solicitado:</strong> R$ ${a.pedido.toFixed(2)}</div>
+                        <div style="font-size: 13px; margin-bottom: 6px;"><strong>Valor Recebido:</strong> R$ ${a.recebido.toFixed(2)}</div>
+                        <div style="font-size: 13px; color: ${saldo > 0 ? '#e74c3c' : '#27ae60'}; font-weight: bold;"><strong>Saldo:</strong> R$ ${saldo.toFixed(2)}</div>
+                        ${a.obs ? `<div style="font-size: 13px; margin-top: 8px; padding-top: 8px; border-top: 1px solid #ddd;"><strong>📝 Obs:</strong> ${a.obs}</div>` : ''}
+                    </div>
+                `;
+            });
+
+            const modal = document.createElement('div');
+            modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1001; padding: 10px;';
+            modal.innerHTML = `
+                <div style="background: white; padding: 20px; border-radius: 8px; max-width: 400px; width: 100%; max-height: 70vh; overflow-y: auto;">
+                    ${html}
+                    <button class="btn-cancel" onclick="this.parentElement.parentElement.remove()" style="width: 100%; margin-top: 15px;">Fechar</button>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        function updateExtratoLanchaFilter() {
+            const select = document.getElementById('extratoFiltroLancha');
+            select.innerHTML = '<option value="">Total Geral</option>';
+            lanchas.forEach(l => {
+                select.innerHTML += `<option value="${l.id}">${l.nome}</option>`;
+            });
+        }
+
+        function getDashboardResumo() {
+            const hoje = new Date();
+            const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+
+            let totalRecebido = 0, totalSolicitado = 0, totalDespesas = 0;
+
+            [...agendamentosAbertos, ...agendamentosRealizados].forEach(a => {
+                if (a.data.startsWith(mesAtual)) {
+                    totalSolicitado += a.pedido;
+                    totalRecebido += a.recebido;
+                }
+            });
+
+            despesas.forEach(d => {
+                if (d.mes === mesAtual || d.mes.startsWith(mesAtual)) {
+                    totalDespesas += d.valor;
+                }
+            });
+
+            const aReceber = totalSolicitado - totalRecebido;
+            const lucro = totalRecebido - totalDespesas;
+
+            return { totalRecebido, totalSolicitado, aReceber, totalDespesas, lucro };
+        }
+
+        function renderDashboard() {
+            const resumo = getDashboardResumo();
+            const dashboard = document.getElementById('dashboardResumo');
+            if (!dashboard) return;
+
+            dashboard.innerHTML = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                    <div style="background: #27ae60; color: white; padding: 12px; border-radius: 6px; text-align: center;">
+                        <div style="font-size: 12px; opacity: 0.9;">Total Recebido</div>
+                        <div style="font-size: 18px; font-weight: bold;">R$ ${resumo.totalRecebido.toFixed(2)}</div>
+                    </div>
+                    <div style="background: #e74c3c; color: white; padding: 12px; border-radius: 6px; text-align: center;">
+                        <div style="font-size: 12px; opacity: 0.9;">A Receber</div>
+                        <div style="font-size: 18px; font-weight: bold;">R$ ${resumo.aReceber.toFixed(2)}</div>
+                    </div>
+                    <div style="background: #e67e22; color: white; padding: 12px; border-radius: 6px; text-align: center;">
+                        <div style="font-size: 12px; opacity: 0.9;">Despesas</div>
+                        <div style="font-size: 18px; font-weight: bold;">R$ ${resumo.totalDespesas.toFixed(2)}</div>
+                    </div>
+                    <div style="background: #1a5f7a; color: white; padding: 12px; border-radius: 6px; text-align: center;">
+                        <div style="font-size: 12px; opacity: 0.9;">Lucro Líquido</div>
+                        <div style="font-size: 18px; font-weight: bold;">R$ ${resumo.lucro.toFixed(2)}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderExtrato() {
+            const filtroLancha = document.getElementById('extratoFiltroLancha').value;
+            const hoje = new Date();
+            const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+
+            let totalRecebido = 0, totalSolicitado = 0;
+            const agendamentosFiltrados = [...agendamentosAbertos, ...agendamentosRealizados].filter(a => {
+                const mesAgendamento = a.data.substring(0, 7);
+                if (mesAgendamento !== mesAtual) return false;
+                if (filtroLancha && a.lanchaId !== filtroLancha) return false;
+                return true;
+            });
+
+            agendamentosFiltrados.forEach(a => {
+                totalSolicitado += a.pedido;
+                totalRecebido += a.recebido;
+            });
+
+            const aReceber = totalSolicitado - totalRecebido;
+
+            // Despesas por categoria
+            const despesasFiltradas = despesas.filter(d => {
+                const mesDespesa = d.mes.substring(0, 7);
+                if (mesDespesa !== mesAtual) return false;
+                if (d.lanchaId !== 'todas' && filtroLancha && d.lanchaId !== filtroLancha) return false;
+                if (d.lanchaId === 'todas') return true;
+                return true;
+            });
+
+            const despesasPorCategoria = {};
+            let totalDespesas = 0;
+            despesasFiltradas.forEach(d => {
+                if (!despesasPorCategoria[d.categoria]) {
+                    despesasPorCategoria[d.categoria] = [];
+                }
+                despesasPorCategoria[d.categoria].push(d);
+                totalDespesas += d.valor;
+            });
+
+            const lucroLiquido = totalRecebido - totalDespesas;
+
+            // Renderizar resumo
+            let html = `
+                <h3 style="margin-bottom: 15px;">📈 Faturamento</h3>
+                <div style="background: #f9f9f9; padding: 12px; border-radius: 6px; margin-bottom: 15px;">
+                    <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #eee;">
+                        <span>Valor Solicitado:</span>
+                        <strong>R$ ${totalSolicitado.toFixed(2)}</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #eee;">
+                        <span>Valor Recebido:</span>
+                        <strong>R$ ${totalRecebido.toFixed(2)}</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 6px 0;">
+                        <span>A Receber:</span>
+                        <strong style="color: #e74c3c;">R$ ${aReceber.toFixed(2)}</strong>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('resumoExtrato').innerHTML = html;
+
+            // Renderizar despesas
+            let despesasHtml = '';
+            if (Object.keys(despesasPorCategoria).length === 0) {
+                despesasHtml = '<div class="empty">Nenhuma despesa neste período</div>';
+            } else {
+                Object.keys(despesasPorCategoria).forEach(categoria => {
+                    const items = despesasPorCategoria[categoria];
+                    const subtotal = items.reduce((sum, d) => sum + d.valor, 0);
+
+                    despesasHtml += `
+                        <div style="margin-bottom: 15px; background: #f9f9f9; padding: 12px; border-radius: 6px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-weight: bold;">
+                                <span>${categoria}</span>
+                                <span>R$ ${subtotal.toFixed(2)}</span>
+                            </div>
+                    `;
+
+                    items.forEach(d => {
+                        despesasHtml += `
+                            <div style="display: flex; justify-content: space-between; font-size: 12px; padding: 6px 0; border-top: 1px solid #eee; color: #666;">
+                                <span>${d.descricao || '(sem descrição)'}</span>
+                                <div>
+                                    <span>R$ ${d.valor.toFixed(2)}</span>
+                                    ${editMode ? `<button class="btn-delete" onclick="deletarDespesa(${d.id})" aria-label="Deletar despesa" style="margin-left: 8px; padding: 2px 6px; font-size: 10px;">🗑️</button>` : ''}
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    despesasHtml += '</div>';
+                });
+            }
+
+            despesasHtml += `
+                <div style="background: white; padding: 12px; border-radius: 6px; border: 2px solid #e67e22; margin-top: 15px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                        <span>Total Despesas:</span>
+                        <strong style="color: #e67e22;">R$ ${totalDespesas.toFixed(2)}</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding-top: 10px; border-top: 2px solid #e67e22;">
+                        <span style="font-weight: bold; font-size: 16px;">💰 Lucro Líquido:</span>
+                        <strong style="font-size: 16px; color: ${lucroLiquido >= 0 ? '#27ae60' : '#e74c3c'};">R$ ${lucroLiquido.toFixed(2)}</strong>
+                    </div>
+                </div>
+            `;
+
+            if (editMode) {
+                despesasHtml += `<button class="btn-primary" onclick="abrirModalAdicionarDespesa()" style="width: 100%; margin-top: 15px;" aria-label="Adicionar nova despesa">+ Adicionar Despesa</button>`;
+            }
+
+            document.getElementById('listaDespesas').innerHTML = despesasHtml;
+        }
+
+        function exportarDados() {
+            const dados = {
+                lanchas,
+                vendedores,
+                agendamentosAbertos,
+                agendamentosRealizados,
+                despesas,
+                dataExporte: new Date().toISOString()
+            };
+
+            const json = JSON.stringify(dados, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `backup_babu_lanchas_${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            mostrarToast('Backup realizado!');
+        }
+
+        function mostrarToast(msg) {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = msg;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2000);
+        }
+
+        window.addEventListener('load', () => {
+            getLanchasDoStorage();
+            getVendedoresDoStorage();
+            getAgendamentosDoStorage();
+            getDespesasDoStorage();
+            renderAbertos();
+            renderDashboard();
+
+            // Define mês padrão para hoje
+            const hoje = new Date();
+            const ano = hoje.getFullYear();
+            const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+            document.getElementById('mesFiltro').value = `${ano}-${mes}`;
+
+            document.getElementById('inputSenha').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') verificarSenha();
+            });
+        });
+
+        // ESC para fechar qualquer modal aberto
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const modals = [
+                    'modalSenha',
+                    'modalConfig',
+                    'modalRecuperarSenha',
+                    'modalAdicionarDespesa',
+                    'modalEditar',
+                    'modalPreview'
+                ];
+                modals.forEach(modalId => {
+                    const modal = document.getElementById(modalId);
+                    if (modal && modal.classList.contains('show')) {
+                        modal.classList.remove('show');
+                    }
+                });
+            }
+        });
+
+        // Atualizar dashboard quando agendamentos mudam
+        const originalAddAgendamento = addAgendamento;
+        addAgendamento = function() {
+            originalAddAgendamento.call(this);
+            renderDashboard();
+        };
+
+        const originalMarcarRealizado = marcarRealizado;
+        marcarRealizado = function(id) {
+            originalMarcarRealizado.call(this, id);
+            renderDashboard();
+        };
+    </script>
+</body>
+</html>
