@@ -1,8 +1,18 @@
 <!DOCTYPE html>
-<!-- VERSION: 2.1.1 (ATUALIZAR AQUI QUANDO SUBIR NOVO INDEX) -->
+<!-- VERSION: 2.1.7 (ATUALIZAR AQUI QUANDO SUBIR NOVO INDEX) -->
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
+
+    <!-- Força reload se URL não tiver parâmetro de cache busting -->
+    <script>
+        (function() {
+            if (!window.location.search.includes('v=')) {
+                // Redireciona com parâmetro ?v=timestamp
+                window.location.href = window.location.pathname + '?v=' + Date.now();
+            }
+        })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#1a5f7a">
     <meta name="description" content="App para gerenciar agendamentos e faturamento de lanchas">
@@ -17,7 +27,7 @@
     <!-- Script de versionamento automático para limpar cache -->
     <script>
         (function() {
-            const versaoAtual = '2.1.1';
+            const versaoAtual = '2.1.7';
             const versaoArmazenada = localStorage.getItem('appVersion');
 
             console.log('🔍 Verificação de versão:');
@@ -84,22 +94,22 @@
             }
         })();
 
-        // Verificação periódica de atualizações (a cada 5 minutos)
+        // Verificação periódica de atualizações (a cada 1 minuto)
         setInterval(() => {
-            fetch(window.location.href, { cache: 'no-store' })
-                .then(response => response.text())
-                .then(html => {
-                    const versaoNoServidor = html.match(/VERSION:\s*([\d.]+)/)?.[1];
+            fetch('version.json?' + Date.now(), { cache: 'no-store' })
+                .then(response => response.json())
+                .then(data => {
+                    const versaoNoServidor = data.version;
                     const versaoAtual = localStorage.getItem('appVersion');
 
                     if (versaoNoServidor && versaoNoServidor !== versaoAtual) {
-                        console.log('🔔 Nova versão disponível no servidor:', versaoNoServidor);
-                        console.log('Recarregando...');
-                        window.location.reload();
+                        console.log('🔔 Nova versão disponível:', versaoNoServidor);
+                        console.log('🔄 Recarregando página...');
+                        setTimeout(() => window.location.reload(), 1000);
                     }
                 })
-                .catch(err => console.log('Verificação de versão:', err.message));
-        }, 300000); // 5 minutos
+                .catch(err => console.log('❌ Erro ao verificar atualizações:', err.message));
+        }, 60000); // 1 minuto
     </script>
 
     <style>
@@ -757,6 +767,10 @@
                     <option value="">Escolha o vendedor</option>
                 </select>
             </div>
+            <div class="form-group">
+                <label>👤 Cliente</label>
+                <input type="text" id="clienteAbertos" placeholder="Nome do cliente" required>
+            </div>
             <div class="form-row">
                 <div class="form-group">
                     <label>Data</label>
@@ -810,11 +824,17 @@
     <!-- ABA EXTRATO -->
     <div id="extrato" class="content">
         <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-            <div class="form-group">
-                <label>🔍 Filtrar por Lancha:</label>
-                <select id="extratoFiltroLancha" onchange="renderExtrato()">
-                    <option value="">Total Geral</option>
-                </select>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>📅 Mês/Ano:</label>
+                    <input type="month" id="extratoFiltroMes" onchange="renderExtrato()">
+                </div>
+                <div class="form-group">
+                    <label>🔍 Filtrar por Lancha:</label>
+                    <select id="extratoFiltroLancha" onchange="renderExtrato()">
+                        <option value="">Total Geral</option>
+                    </select>
+                </div>
             </div>
         </div>
 
@@ -832,13 +852,14 @@
     <div class="modal" id="modalSenha">
         <div class="modal-content">
             <h2>🔐 Modo Administrador</h2>
-            <input type="password" id="inputSenha" placeholder="Digite a senha">
+            <p style="font-size: 13px; color: #666; margin-bottom: 12px;">Digite a senha de 4 dígitos</p>
+            <input type="text" id="inputSenha" placeholder="0000" maxlength="4" inputmode="numeric" style="font-size: 18px; letter-spacing: 8px; text-align: center;">
             <div class="modal-actions">
                 <button class="btn-primary" onclick="verificarSenha()" aria-label="Verificar senha e entrar no modo administrador">Entrar</button>
                 <button class="btn-cancel" onclick="fecharModal()" aria-label="Cancelar entrada no modo administrador">Cancelar</button>
             </div>
             <div style="text-align: center; margin-top: 15px;">
-                <button class="btn-cancel" onclick="abrirModalRecuperarSenha()" style="font-size: 12px; padding: 6px 10px;" aria-label="Abrir opções de recuperação de senha">Esqueci a senha</button>
+                <button class="btn-cancel" id="btnMostrarDica" onclick="mostrarDicaSenha()" style="font-size: 12px; padding: 6px 10px; display: none;" aria-label="Mostrar dica da senha">💡 Mostrar Dica</button>
             </div>
         </div>
     </div>
@@ -899,30 +920,6 @@
         <div class="modal-content">
             <h2>⚙️ Configurar</h2>
 
-            <h3 style="margin-top: 20px; margin-bottom: 10px;">🔐 Segurança</h3>
-            <div class="form-group">
-                <label>Alterar Senha</label>
-                <input type="password" id="inputNovaSenha" placeholder="Digite a nova senha">
-            </div>
-            <button class="btn-primary" onclick="alterarSenha()" style="margin-bottom: 15px;" aria-label="Atualizar senha do modo administrador">Atualizar Senha</button>
-
-            <div style="background: #f0f8ff; padding: 12px; border-radius: 6px; margin-bottom: 20px;">
-                <h4 style="margin-bottom: 10px;">Recuperação de Senha</h4>
-                <div class="form-group">
-                    <label>Pergunta de Segurança (Opção A)</label>
-                    <input type="text" id="inputPerguntaSeguranca" placeholder="Ex: Qual é seu sobrenome?" value="${perguntaSeguranca || ''}">
-                </div>
-                <div class="form-group">
-                    <label>Resposta</label>
-                    <input type="text" id="inputRespostaSeguranca" placeholder="Digite a resposta" value="${respostaSeguranca || ''}">
-                </div>
-                <div class="form-group">
-                    <label>Dica de Senha (Opção B)</label>
-                    <input type="text" id="inputDicaSenha" placeholder="Ex: Começa com 1 e tem 4 dígitos" value="${dicaSenha || ''}">
-                </div>
-                <button class="btn-primary" onclick="salvarRecuperacaoSenha()" style="width: 100%; margin-bottom: 20px;" aria-label="Salvar opções de recuperação de senha">Salvar Opções de Recuperação</button>
-            </div>
-
             <h3 style="margin-bottom: 10px;">🚤 Lanchas</h3>
             <div id="listaLanchasConfig" style="margin-bottom: 15px;"></div>
             <div class="form-group">
@@ -938,6 +935,18 @@
                 <input type="text" id="inputNovoVendedor" placeholder="Nome do vendedor">
             </div>
             <button class="btn-primary" onclick="adicionarNovoVendedor()" aria-label="Adicionar novo vendedor">Adicionar Vendedor</button>
+
+            <h3 style="margin-top: 20px; margin-bottom: 10px;">🔐 Alterar Senha</h3>
+            <p style="font-size: 12px; color: #666; margin-bottom: 10px;">Senha com 4 dígitos (0000-9999)</p>
+            <div class="form-group">
+                <label>Nova Senha</label>
+                <input type="text" id="inputNovaSenha" placeholder="0000" maxlength="4" inputmode="numeric" style="font-size: 16px; letter-spacing: 4px; text-align: center;">
+            </div>
+            <div class="form-group">
+                <label>Confirmar Senha</label>
+                <input type="text" id="inputConfirmarSenha" placeholder="0000" maxlength="4" inputmode="numeric" style="font-size: 16px; letter-spacing: 4px; text-align: center;">
+            </div>
+            <button class="btn-primary" onclick="alterarSenha()" style="margin-bottom: 15px; width: 100%;" aria-label="Atualizar senha do modo administrador">Atualizar Senha</button>
 
             <h3 style="margin-top: 20px; margin-bottom: 10px;">📥 Backup</h3>
             <button class="btn-primary" onclick="exportarDados()" style="width: 100%;" aria-label="Fazer backup de todos os dados em arquivo JSON">📥 Fazer Backup (JSON)</button>
@@ -963,6 +972,10 @@
                 <select id="editVendedor" required>
                     <option value="">Escolha o vendedor</option>
                 </select>
+            </div>
+            <div class="form-group">
+                <label>👤 Cliente</label>
+                <input type="text" id="editCliente" placeholder="Nome do cliente" required>
             </div>
             <div class="form-row">
                 <div class="form-group">
@@ -999,12 +1012,51 @@
         let SENHA = localStorage.getItem('app_senha') || "1234";
         let editMode = false;
         let lanchas = [];
+        let tentativasSenha = 0; // Contador de tentativas erradas
         let vendedores = [];
         let agendamentosAbertos = [];
         let agendamentosRealizados = [];
         let despesas = [];
         let agendamentoEditandoId = null;
         let filtrosAtivos = { dataInicial: null, dataFinal: null, lancha: null, vendedor: null };
+
+        // ============================================
+        // GOOGLE SHEETS SINCRONIZAÇÃO
+        // ============================================
+        const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzYf9_TwFfbIqf6ZpNskP2f4enaZth-M_dl8mZ2Nn6D9gAadf66epDhXmllzMUJ11rF4w/exec';
+        let sincronizando = false;
+        let ultimaSincronizacao = localStorage.getItem('ultimaSincronizacao') || null;
+
+        async function sincronizarComGoogleSheets() {
+            if (sincronizando || !navigator.onLine) return;
+
+            sincronizando = true;
+            try {
+                // Carregar dados do Google Sheets
+                const response = await fetch(GOOGLE_APPS_SCRIPT_URL + '?acao=obterAgendamentos');
+                const dados = await response.json();
+
+                if (dados && Array.isArray(dados)) {
+                    agendamentosAbertos = dados.filter(d => d.tipo === 'aberto');
+                    agendamentosRealizados = dados.filter(d => d.tipo === 'realizado');
+                    saveAgendamentos();
+                }
+
+                ultimaSincronizacao = new Date().toISOString();
+                localStorage.setItem('ultimaSincronizacao', ultimaSincronizacao);
+                console.log('✅ Sincronização com Google Sheets concluída');
+            } catch (error) {
+                console.log('⚠️ Erro ao sincronizar:', error.message);
+            } finally {
+                sincronizando = false;
+            }
+        }
+
+        // Sincronizar a cada 30 segundos quando online
+        window.addEventListener('online', sincronizarComGoogleSheets);
+        setInterval(() => {
+            if (navigator.onLine) sincronizarComGoogleSheets();
+        }, 30000);
 
         // Dados de segurança
         let perguntaSeguranca = localStorage.getItem('pergunta_seguranca') || null;
@@ -1023,6 +1075,14 @@
             if (!isoString) return '';
             const data = isoString.split('T')[0];
             return formatarData(data);
+        }
+
+        function formatarValor(valor, decimais = 2) {
+            // Mostra *** se não está em modo admin, senão mostra o valor formatado
+            if (!editMode) {
+                return '***';
+            }
+            return `R$ ${valor.toFixed(decimais)}`;
         }
 
         function getLanchasDoStorage() {
@@ -1150,18 +1210,37 @@
 
         function alterarSenha() {
             const novaSenha = document.getElementById('inputNovaSenha').value.trim();
-            if (!novaSenha) {
-                mostrarToast('Digite uma nova senha');
+            const confirmarSenha = document.getElementById('inputConfirmarSenha').value.trim();
+
+            if (!novaSenha || !confirmarSenha) {
+                mostrarToast('Preencha ambos os campos');
                 return;
             }
-            if (novaSenha.length < 4) {
-                mostrarToast('Senha deve ter pelo menos 4 caracteres');
+
+            // Validar: apenas números e exatamente 4 dígitos
+            if (!/^\d{4}$/.test(novaSenha)) {
+                mostrarToast('⚠️ Nova senha deve ter exatamente 4 dígitos');
                 return;
             }
+
+            if (!/^\d{4}$/.test(confirmarSenha)) {
+                mostrarToast('⚠️ Confirmação deve ter exatamente 4 dígitos');
+                return;
+            }
+
+            // Validar se as senhas são iguais
+            if (novaSenha !== confirmarSenha) {
+                mostrarToast('❌ As senhas não conferem! Tente novamente.');
+                document.getElementById('inputNovaSenha').value = '';
+                document.getElementById('inputConfirmarSenha').value = '';
+                return;
+            }
+
             SENHA = novaSenha;
             localStorage.setItem('app_senha', novaSenha);
             document.getElementById('inputNovaSenha').value = '';
-            mostrarToast('Senha atualizada com sucesso!');
+            document.getElementById('inputConfirmarSenha').value = '';
+            mostrarToast('✅ Senha atualizada com sucesso!');
         }
 
         function salvarRecuperacaoSenha() {
@@ -1321,12 +1400,15 @@
         function fecharModal() {
             document.getElementById('modalSenha').classList.remove('show');
             document.getElementById('inputSenha').value = '';
+            tentativasSenha = 0; // Reset contador
+            document.getElementById('btnMostrarDica').style.display = 'none';
         }
 
         function verificarSenha() {
             const senha = document.getElementById('inputSenha').value;
             if (senha === SENHA) {
                 editMode = true;
+                tentativasSenha = 0; // Reset contador
                 document.getElementById('status').textContent = '🔐 Modo Administrador';
                 document.getElementById('formAbertos').classList.add('show');
                 document.getElementById('btnConfig').style.display = 'block';
@@ -1337,11 +1419,31 @@
                 renderRealizados();
                 renderExtrato();
                 renderDashboard();
-                mostrarToast('Modo edição ativado');
+                mostrarToast('✅ Modo Administrador ativado!');
             } else {
-                mostrarToast('Senha incorreta!');
+                tentativasSenha++;
+                const tentativasRestantes = 3 - tentativasSenha;
+
+                if (tentativasRestantes > 0) {
+                    mostrarToast(`❌ Senha incorreta! ${tentativasRestantes} ${tentativasRestantes === 1 ? 'tentativa' : 'tentativas'} restante(s)`);
+                } else {
+                    mostrarToast('❌ Tentativas esgotadas! Clique em "Mostrar Dica"');
+                    // Mostrar botão de dica
+                    document.getElementById('btnMostrarDica').style.display = 'inline-block';
+                }
                 document.getElementById('inputSenha').value = '';
             }
+        }
+
+        function mostrarDicaSenha() {
+            if (SENHA.length === 0) {
+                mostrarToast('Nenhuma senha configurada');
+                return;
+            }
+            const primeiro = SENHA[0];
+            const ultimo = SENHA[SENHA.length - 1];
+            const dica = `${primeiro}${'*'.repeat(Math.max(0, SENHA.length - 2))}${ultimo}`;
+            mostrarToast(`💡 Dica: ${dica}`);
         }
 
         function abrirModalRecuperarSenha() {
@@ -1463,13 +1565,14 @@
 
             const lanchaId = document.getElementById('selectLancha').value;
             const vendedorId = document.getElementById('selectVendedor').value;
+            const cliente = document.getElementById('clienteAbertos').value.trim();
             const data = document.getElementById('dataAbertos').value;
             const qtdPessoas = parseInt(document.getElementById('qtdPessoasAbertos').value) || 0;
             const pedido = parseFloat(document.getElementById('pedAbertos').value) || 0;
             const recebido = parseFloat(document.getElementById('recAbertos').value) || 0;
 
-            if (!lanchaId || !vendedorId || !data || qtdPessoas <= 0 || pedido <= 0) {
-                mostrarToast('Preencha todos os campos');
+            if (!lanchaId || !vendedorId || !cliente || !data || qtdPessoas <= 0 || pedido <= 0) {
+                mostrarToast('Preencha todos os campos obrigatórios');
                 return;
             }
 
@@ -1482,6 +1585,7 @@
                 lanchaNome: lanchaObj.nome,
                 vendedorId,
                 vendedorNome: vendedorObj.nome,
+                cliente,
                 data,
                 qtdPessoas,
                 pedido,
@@ -1493,6 +1597,7 @@
             saveAgendamentos();
             document.getElementById('selectLancha').value = '';
             document.getElementById('selectVendedor').value = '';
+            document.getElementById('clienteAbertos').value = '';
             document.getElementById('dataAbertos').value = '';
             document.getElementById('qtdPessoasAbertos').value = '';
             document.getElementById('pedAbertos').value = '';
@@ -1509,6 +1614,7 @@
             agendamentoEditandoId = id;
             document.getElementById('editLancha').value = agend.lanchaId;
             document.getElementById('editVendedor').value = agend.vendedorId;
+            document.getElementById('editCliente').value = agend.cliente || '';
             document.getElementById('editData').value = agend.data;
             document.getElementById('editQtdPessoas').value = agend.qtdPessoas || '';
             document.getElementById('editPedido').value = agend.pedido;
@@ -1524,6 +1630,7 @@
             agendamentoEditandoId = id;
             document.getElementById('editLancha').value = agend.lanchaId;
             document.getElementById('editVendedor').value = agend.vendedorId;
+            document.getElementById('editCliente').value = agend.cliente || '';
             document.getElementById('editData').value = agend.data;
             document.getElementById('editQtdPessoas').value = agend.qtdPessoas || '';
             document.getElementById('editPedido').value = agend.pedido;
@@ -1537,14 +1644,15 @@
 
             const lanchaId = document.getElementById('editLancha').value;
             const vendedorId = document.getElementById('editVendedor').value;
+            const cliente = document.getElementById('editCliente').value.trim();
             const data = document.getElementById('editData').value;
             const qtdPessoas = parseInt(document.getElementById('editQtdPessoas').value) || 0;
             const pedido = parseFloat(document.getElementById('editPedido').value) || 0;
             const recebido = parseFloat(document.getElementById('editRecebido').value) || 0;
             const obs = document.getElementById('editObs').value.trim();
 
-            if (!lanchaId || !vendedorId || !data || qtdPessoas <= 0 || pedido <= 0) {
-                mostrarToast('Preencha todos os campos');
+            if (!lanchaId || !vendedorId || !cliente || !data || qtdPessoas <= 0 || pedido <= 0) {
+                mostrarToast('Preencha todos os campos obrigatórios');
                 return;
             }
 
@@ -1562,6 +1670,7 @@
                     lanchaNome: lanchaObj.nome,
                     vendedorId,
                     vendedorNome: vendedorObj.nome,
+                    cliente,
                     data,
                     qtdPessoas,
                     pedido,
@@ -1576,6 +1685,7 @@
                     lanchaNome: lanchaObj.nome,
                     vendedorId,
                     vendedorNome: vendedorObj.nome,
+                    cliente,
                     data,
                     qtdPessoas,
                     pedido,
@@ -1686,20 +1796,21 @@
                                         <div class="agendamento-header">
                                             <span class="agendamento-data">${data}</span>
                                         </div>
-                                        <div class="agendamento-vendedor">👤 ${a.vendedorNome} | 👥 ${a.qtdPessoas} pessoa(s)</div>
+                                        <div style="font-weight: bold; color: #1a5f7a; margin-bottom: 4px;">👤 ${a.cliente}</div>
+                                        <div class="agendamento-vendedor">💰 ${a.vendedorNome} | 👥 ${a.qtdPessoas} pessoa(s)</div>
                                         ${a.obs ? `<div style="font-size: 13px; color: #666; margin-top: 6px; padding: 8px; background: #f0f8ff; border-radius: 4px;">📝 ${a.obs}</div>` : ''}
                                         <div class="agendamento-valores">
                                             <div class="valor">
                                                 <span class="valor-label">Valor Solicitado:</span>
-                                                <span class="valor-amount">R$ ${a.pedido.toFixed(2)}</span>
+                                                <span class="valor-amount">${formatarValor(a.pedido)}</span>
                                             </div>
                                             <div class="valor">
                                                 <span class="valor-label">Valor Recebido:</span>
-                                                <span class="valor-amount">R$ ${a.recebido.toFixed(2)}</span>
+                                                <span class="valor-amount">${formatarValor(a.recebido)}</span>
                                             </div>
                                             <div class="valor">
                                                 <span class="valor-label">Valor a Receber:</span>
-                                                <span class="valor-amount falta">R$ ${falta.toFixed(2)}</span>
+                                                <span class="valor-amount falta">${formatarValor(falta)}</span>
                                             </div>
                                         </div>
                                         <div class="agendamento-actions">
@@ -1726,15 +1837,15 @@
             summary.innerHTML = `
                 <div class="summary-box">
                     <h3>Valor Solicitado</h3>
-                    <div class="value">R$ ${totalPedido.toFixed(2)}</div>
+                    <div class="value">${formatarValor(totalPedido)}</div>
                 </div>
                 <div class="summary-box">
                     <h3>Valor Recebido</h3>
-                    <div class="value">R$ ${totalRecebido.toFixed(2)}</div>
+                    <div class="value">${formatarValor(totalRecebido)}</div>
                 </div>
                 <div class="summary-box">
                     <h3>Valor a Receber</h3>
-                    <div class="value">R$ ${totalFalta.toFixed(2)}</div>
+                    <div class="value">${formatarValor(totalFalta)}</div>
                 </div>
             `;
         }
@@ -1771,20 +1882,21 @@
                                         <div class="agendamento-header">
                                             <span class="agendamento-data">${data}</span>
                                         </div>
-                                        <div class="agendamento-vendedor">👤 ${a.vendedorNome} | 👥 ${a.qtdPessoas} pessoa(s)</div>
+                                        <div style="font-weight: bold; color: #1a5f7a; margin-bottom: 4px;">👤 ${a.cliente}</div>
+                                        <div class="agendamento-vendedor">💰 ${a.vendedorNome} | 👥 ${a.qtdPessoas} pessoa(s)</div>
                                         ${a.obs ? `<div style="font-size: 13px; color: #666; margin-top: 6px; padding: 8px; background: #f0f8ff; border-radius: 4px;">📝 ${a.obs}</div>` : ''}
                                         <div class="agendamento-valores">
                                             <div class="valor">
                                                 <span class="valor-label">Valor Solicitado:</span>
-                                                <span class="valor-amount">R$ ${a.pedido.toFixed(2)}</span>
+                                                <span class="valor-amount">${formatarValor(a.pedido)}</span>
                                             </div>
                                             <div class="valor">
                                                 <span class="valor-label">Valor Recebido:</span>
-                                                <span class="valor-amount">R$ ${a.recebido.toFixed(2)}</span>
+                                                <span class="valor-amount">${formatarValor(a.recebido)}</span>
                                             </div>
                                             <div class="valor">
                                                 <span class="valor-label">Valor a Receber:</span>
-                                                <span class="valor-amount falta">R$ ${falta.toFixed(2)}</span>
+                                                <span class="valor-amount falta">${formatarValor(falta)}</span>
                                             </div>
                                         </div>
                                         <div class="agendamento-actions">
@@ -1811,15 +1923,15 @@
             summary.innerHTML = `
                 <div class="summary-box">
                     <h3>Valor Solicitado</h3>
-                    <div class="value">R$ ${totalPedido.toFixed(2)}</div>
+                    <div class="value">${formatarValor(totalPedido)}</div>
                 </div>
                 <div class="summary-box">
                     <h3>Valor Recebido</h3>
-                    <div class="value">R$ ${totalRecebido.toFixed(2)}</div>
+                    <div class="value">${formatarValor(totalRecebido)}</div>
                 </div>
                 <div class="summary-box">
                     <h3>Valor a Receber</h3>
-                    <div class="value">R$ ${totalFalta.toFixed(2)}</div>
+                    <div class="value">${formatarValor(totalFalta)}</div>
                 </div>
             `;
         }
@@ -1968,6 +2080,10 @@
                             <span class="recibo-value">${agend.vendedorNome}</span>
                         </div>
                         <div class="recibo-line">
+                            <span class="recibo-label">Cliente:</span>
+                            <span class="recibo-value">${agend.cliente}</span>
+                        </div>
+                        <div class="recibo-line">
                             <span class="recibo-label">Quantidade de Pessoas:</span>
                             <span class="recibo-value">${agend.qtdPessoas || 0}</span>
                         </div>
@@ -1986,15 +2102,15 @@
 
                         <div class="recibo-line">
                             <span class="recibo-label">Valor Solicitado:</span>
-                            <span class="recibo-value">R$ ${agend.pedido.toFixed(2)}</span>
+                            <span class="recibo-value">${formatarValor(agend.pedido)}</span>
                         </div>
                         <div class="recibo-line">
                             <span class="recibo-label">Valor Recebido:</span>
-                            <span class="recibo-value">R$ ${agend.recebido.toFixed(2)}</span>
+                            <span class="recibo-value">${formatarValor(agend.recebido)}</span>
                         </div>
                         <div class="recibo-line total">
                             <span class="recibo-label">Saldo:</span>
-                            <span class="recibo-value" style="color: ${saldo > 0 ? '#e74c3c' : '#27ae60'};">R$ ${saldo.toFixed(2)}</span>
+                            <span class="recibo-value" style="color: ${saldo > 0 ? '#e74c3c' : '#27ae60'};">${formatarValor(saldo)}</span>
                         </div>
 
                         <div style="height: 10px;"></div>
@@ -2120,10 +2236,11 @@
                     <div style="background: #f9f9f9; padding: 12px; border-radius: 6px; margin-bottom: 10px; border-left: 4px solid ${corStatus};">
                         <div style="font-weight: bold; color: ${corStatus}; margin-bottom: 8px;">${status}</div>
                         <div style="font-size: 13px; margin-bottom: 6px;"><strong>Vendedor:</strong> ${a.vendedorNome}</div>
+                        <div style="font-size: 13px; margin-bottom: 6px;"><strong>Cliente:</strong> ${a.cliente}</div>
                         <div style="font-size: 13px; margin-bottom: 6px;"><strong>Pessoas:</strong> ${a.qtdPessoas || 0}</div>
-                        <div style="font-size: 13px; margin-bottom: 6px;"><strong>Valor Solicitado:</strong> R$ ${a.pedido.toFixed(2)}</div>
-                        <div style="font-size: 13px; margin-bottom: 6px;"><strong>Valor Recebido:</strong> R$ ${a.recebido.toFixed(2)}</div>
-                        <div style="font-size: 13px; color: ${saldo > 0 ? '#e74c3c' : '#27ae60'}; font-weight: bold;"><strong>Saldo:</strong> R$ ${saldo.toFixed(2)}</div>
+                        <div style="font-size: 13px; margin-bottom: 6px;"><strong>Valor Solicitado:</strong> ${formatarValor(a.pedido)}</div>
+                        <div style="font-size: 13px; margin-bottom: 6px;"><strong>Valor Recebido:</strong> ${formatarValor(a.recebido)}</div>
+                        <div style="font-size: 13px; color: ${saldo > 0 ? '#e74c3c' : '#27ae60'}; font-weight: bold;"><strong>Saldo:</strong> ${formatarValor(saldo)}</div>
                         ${a.obs ? `<div style="font-size: 13px; margin-top: 8px; padding-top: 8px; border-top: 1px solid #ddd;"><strong>📝 Obs:</strong> ${a.obs}</div>` : ''}
                     </div>
                 `;
@@ -2182,19 +2299,19 @@
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
                     <div style="background: #27ae60; color: white; padding: 12px; border-radius: 6px; text-align: center;">
                         <div style="font-size: 12px; opacity: 0.9;">Total Recebido</div>
-                        <div style="font-size: 18px; font-weight: bold;">R$ ${resumo.totalRecebido.toFixed(2)}</div>
+                        <div style="font-size: 18px; font-weight: bold;">${formatarValor(resumo.totalRecebido)}</div>
                     </div>
                     <div style="background: #e74c3c; color: white; padding: 12px; border-radius: 6px; text-align: center;">
                         <div style="font-size: 12px; opacity: 0.9;">A Receber</div>
-                        <div style="font-size: 18px; font-weight: bold;">R$ ${resumo.aReceber.toFixed(2)}</div>
+                        <div style="font-size: 18px; font-weight: bold;">${formatarValor(resumo.aReceber)}</div>
                     </div>
                     <div style="background: #e67e22; color: white; padding: 12px; border-radius: 6px; text-align: center;">
                         <div style="font-size: 12px; opacity: 0.9;">Despesas</div>
-                        <div style="font-size: 18px; font-weight: bold;">R$ ${resumo.totalDespesas.toFixed(2)}</div>
+                        <div style="font-size: 18px; font-weight: bold;">${formatarValor(resumo.totalDespesas)}</div>
                     </div>
                     <div style="background: #1a5f7a; color: white; padding: 12px; border-radius: 6px; text-align: center;">
                         <div style="font-size: 12px; opacity: 0.9;">Lucro Líquido</div>
-                        <div style="font-size: 18px; font-weight: bold;">R$ ${resumo.lucro.toFixed(2)}</div>
+                        <div style="font-size: 18px; font-weight: bold;">${formatarValor(resumo.lucro)}</div>
                     </div>
                 </div>
             `;
@@ -2203,7 +2320,15 @@
         function renderExtrato() {
             const filtroLancha = document.getElementById('extratoFiltroLancha').value;
             const hoje = new Date();
-            const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+            const mesDefault = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+
+            // Usar o mês selecionado no input, ou o mês atual como padrão
+            let mesSelecionado = document.getElementById('extratoFiltroMes').value;
+            if (!mesSelecionado) {
+                mesSelecionado = mesDefault;
+                document.getElementById('extratoFiltroMes').value = mesDefault;
+            }
+            const mesAtual = mesSelecionado;
 
             let totalRecebido = 0, totalSolicitado = 0;
             const agendamentosFiltrados = [...agendamentosAbertos, ...agendamentosRealizados].filter(a => {
@@ -2247,15 +2372,15 @@
                 <div style="background: #f9f9f9; padding: 12px; border-radius: 6px; margin-bottom: 15px;">
                     <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #eee;">
                         <span>Valor Solicitado:</span>
-                        <strong>R$ ${totalSolicitado.toFixed(2)}</strong>
+                        <strong>${formatarValor(totalSolicitado)}</strong>
                     </div>
                     <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #eee;">
                         <span>Valor Recebido:</span>
-                        <strong>R$ ${totalRecebido.toFixed(2)}</strong>
+                        <strong>${formatarValor(totalRecebido)}</strong>
                     </div>
                     <div style="display: flex; justify-content: space-between; padding: 6px 0;">
                         <span>A Receber:</span>
-                        <strong style="color: #e74c3c;">R$ ${aReceber.toFixed(2)}</strong>
+                        <strong style="color: #e74c3c;">${formatarValor(aReceber)}</strong>
                     </div>
                 </div>
             `;
@@ -2275,7 +2400,7 @@
                         <div style="margin-bottom: 15px; background: #f9f9f9; padding: 12px; border-radius: 6px;">
                             <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-weight: bold;">
                                 <span>${categoria}</span>
-                                <span>R$ ${subtotal.toFixed(2)}</span>
+                                <span>${formatarValor(subtotal)}</span>
                             </div>
                     `;
 
@@ -2284,7 +2409,7 @@
                             <div style="display: flex; justify-content: space-between; font-size: 12px; padding: 6px 0; border-top: 1px solid #eee; color: #666;">
                                 <span>${d.descricao || '(sem descrição)'}</span>
                                 <div>
-                                    <span>R$ ${d.valor.toFixed(2)}</span>
+                                    <span>${formatarValor(d.valor)}</span>
                                     ${editMode ? `<button class="btn-delete" onclick="deletarDespesa(${d.id})" aria-label="Deletar despesa" style="margin-left: 8px; padding: 2px 6px; font-size: 10px;">🗑️</button>` : ''}
                                 </div>
                             </div>
@@ -2299,11 +2424,11 @@
                 <div style="background: white; padding: 12px; border-radius: 6px; border: 2px solid #e67e22; margin-top: 15px;">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
                         <span>Total Despesas:</span>
-                        <strong style="color: #e67e22;">R$ ${totalDespesas.toFixed(2)}</strong>
+                        <strong style="color: #e67e22;">${formatarValor(totalDespesas)}</strong>
                     </div>
                     <div style="display: flex; justify-content: space-between; padding-top: 10px; border-top: 2px solid #e67e22;">
                         <span style="font-weight: bold; font-size: 16px;">💰 Lucro Líquido:</span>
-                        <strong style="font-size: 16px; color: ${lucroLiquido >= 0 ? '#27ae60' : '#e74c3c'};">R$ ${lucroLiquido.toFixed(2)}</strong>
+                        <strong style="font-size: 16px; color: ${lucroLiquido >= 0 ? '#27ae60' : '#e74c3c'};">${formatarValor(lucroLiquido)}</strong>
                     </div>
                 </div>
             `;
@@ -2358,8 +2483,23 @@
             const mes = String(hoje.getMonth() + 1).padStart(2, '0');
             document.getElementById('mesFiltro').value = `${ano}-${mes}`;
 
+            // Validar input de senha (apenas números)
+            document.getElementById('inputSenha').addEventListener('input', (e) => {
+                e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 4);
+            });
+
             document.getElementById('inputSenha').addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') verificarSenha();
+            });
+
+            // Validar input de nova senha (apenas números)
+            document.getElementById('inputNovaSenha').addEventListener('input', (e) => {
+                e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 4);
+            });
+
+            // Validar input de confirmação de senha (apenas números)
+            document.getElementById('inputConfirmarSenha').addEventListener('input', (e) => {
+                e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 4);
             });
         });
 
