@@ -1052,11 +1052,11 @@
             }
         }
 
-        // Sincronizar a cada 30 segundos quando online
+        // Sincronizar a cada 10 minutos quando online
         window.addEventListener('online', sincronizarComGoogleSheets);
         setInterval(() => {
             if (navigator.onLine) sincronizarComGoogleSheets();
-        }, 30000);
+        }, 600000); // 10 minutos
 
         // Dados de segurança
         let perguntaSeguranca = localStorage.getItem('pergunta_seguranca') || null;
