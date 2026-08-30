@@ -1085,7 +1085,27 @@
             if (statusEl) statusEl.textContent = '🔄 Sincronizando...';
 
             try {
-                // Carregar dados do Google Sheets
+                // 1️⃣ PRIMEIRO: ENVIAR dados LOCAIS para Google Sheets
+                const dadosParaEnviar = {
+                    acao: 'salvarAgendamentos',
+                    agendamentosAbertos: agendamentosAbertos,
+                    agendamentosRealizados: agendamentosRealizados,
+                    despesas: despesas,
+                    lanchas: lanchas,
+                    vendedores: vendedores
+                };
+
+                try {
+                    await fetch(GOOGLE_APPS_SCRIPT_URL, {
+                        method: 'POST',
+                        payload: JSON.stringify(dadosParaEnviar)
+                    });
+                    console.log('✅ Dados enviados para Google Sheets');
+                } catch (e) {
+                    console.warn('⚠️ Erro ao enviar dados:', e.message);
+                }
+
+                // 2️⃣ DEPOIS: RECEBER dados de Google Sheets (sincronização bidirecional)
                 const response = await fetch(GOOGLE_APPS_SCRIPT_URL + '?acao=obterAgendamentos');
                 const dados = await response.json();
 
