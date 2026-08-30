@@ -1749,6 +1749,8 @@
         }
 
         function addAgendamento() {
+            console.log('🔵 addAgendamento() iniciado');
+
             if (!editMode) {
                 mostrarToast('Ative o modo edição');
                 return;
@@ -1762,15 +1764,23 @@
             const pedido = parseFloat(document.getElementById('pedAbertos').value) || 0;
             const recebido = parseFloat(document.getElementById('recAbertos').value) || 0;
 
+            console.log('📋 Valores:', {lanchaId, vendedorId, cliente, data, qtdPessoas, pedido, recebido});
+
             if (!lanchaId || !vendedorId || !cliente || !data || qtdPessoas <= 0 || pedido <= 0) {
-                mostrarToast('Preencha todos os campos obrigatórios');
+                mostrarToast('❌ Preencha TODOS os campos obrigatórios!');
+                console.warn('❌ Validação falhou');
                 return;
             }
 
             const lanchaObj = lanchas.find(l => l.id === lanchaId);
             const vendedorObj = vendedores.find(v => v.id === vendedorId);
 
-            agendamentosAbertos.push({
+            if (!lanchaObj || !vendedorObj) {
+                mostrarToast('❌ Lancha ou Vendedor não encontrado!');
+                return;
+            }
+
+            const novoAgendamento = {
                 id: Date.now(),
                 lanchaId,
                 lanchaNome: lanchaObj.nome,
@@ -1783,9 +1793,21 @@
                 recebido,
                 obs: document.getElementById('obsAbertos').value.trim(),
                 dataCriacao: new Date().toISOString()
-            });
+            };
 
-            saveAgendamentos();
+            console.log('✅ Agendamento criado:', novoAgendamento);
+            agendamentosAbertos.push(novoAgendamento);
+            console.log('✅ Total de agendamentos:', agendamentosAbertos.length);
+
+            try {
+                saveAgendamentos();
+                console.log('✅ Agendamentos salvos em localStorage');
+            } catch (e) {
+                console.error('❌ ERRO ao salvar:', e);
+                mostrarToast('❌ Erro ao salvar em localStorage!');
+                return;
+            }
+
             document.getElementById('selectLancha').value = '';
             document.getElementById('selectVendedor').value = '';
             document.getElementById('clienteAbertos').value = '';
@@ -1794,8 +1816,18 @@
             document.getElementById('pedAbertos').value = '';
             document.getElementById('recAbertos').value = '';
             document.getElementById('obsAbertos').value = '';
-            renderAbertos();
-            mostrarToast('Agendamento adicionado!');
+
+            try {
+                renderAbertos();
+                console.log('✅ renderAbertos() executado');
+            } catch (e) {
+                console.error('❌ ERRO em renderAbertos():', e);
+                mostrarToast('❌ Erro ao renderizar!');
+                return;
+            }
+
+            mostrarToast('✅ Agendamento adicionado e SALVO!');
+            console.log('🎉 SUCESSO TOTAL!');
         }
 
         function abrirModalEditar(id) {
