@@ -1092,7 +1092,8 @@
                 if (dados && Array.isArray(dados)) {
                     agendamentosAbertos = dados.filter(d => d.tipo === 'aberto');
                     agendamentosRealizados = dados.filter(d => d.tipo === 'realizado');
-                    saveAgendamentos();
+                    localStorage.setItem(STORAGE_KEYS.AGENDAMENTOS_ABERTOS, JSON.stringify(agendamentosAbertos));
+                    localStorage.setItem(STORAGE_KEYS.AGENDAMENTOS_REALIZADOS, JSON.stringify(agendamentosRealizados));
                 }
 
                 ultimaSincronizacao = new Date().toISOString();
@@ -1185,8 +1186,11 @@
         function saveAgendamentos() {
             localStorage.setItem(STORAGE_KEYS.AGENDAMENTOS_ABERTOS, JSON.stringify(agendamentosAbertos));
             localStorage.setItem(STORAGE_KEYS.AGENDAMENTOS_REALIZADOS, JSON.stringify(agendamentosRealizados));
+            console.log('✅ Agendamentos salvos em localStorage');
             // 🔄 Sincronização imediata com Google Sheets
-            sincronizarComGoogleSheets().catch(e => console.warn('⚠️ Sincronização em background'));
+            sincronizarComGoogleSheets().catch(e => {
+                console.warn('⚠️ Erro na sincronização:', e.message);
+            });
         }
 
         function getDespesasDoStorage() {
