@@ -1989,8 +1989,12 @@
         }
 
         function toggleLanchaGroup(lanchaId) {
+            console.log('🎯 toggleLanchaGroup chamado para:', lanchaId);
+            console.log('📊 Antes:', expandedLanchas[lanchaId]);
             expandedLanchas[lanchaId] = !expandedLanchas[lanchaId];
+            console.log('📊 Depois:', expandedLanchas[lanchaId]);
             renderAbertos();
+            console.log('✅ renderAbertos() executado');
         }
 
         function renderAbertos() {
@@ -2789,13 +2793,29 @@
             }
 
             // 🎯 EVENT DELEGATION: Mobile friendly expand/collapse
+            // Click listener
             document.addEventListener('click', (e) => {
-                const header = e.target.closest('[data-lancha-id]');
-                if (header && e.target.closest('.lancha-group-header')) {
+                const header = e.target.closest('.lancha-group-header');
+                if (header && header.dataset.lanchaId) {
+                    e.preventDefault();
+                    e.stopPropagation();
                     const lanchaId = header.dataset.lanchaId;
-                    if (lanchaId) toggleLanchaGroup(lanchaId);
+                    console.log('🔵 Click detected on lancha:', lanchaId);
+                    toggleLanchaGroup(lanchaId);
                 }
             });
+
+            // Touch listener para garantir que funciona em mobile
+            document.addEventListener('touchend', (e) => {
+                const header = e.target.closest('.lancha-group-header');
+                if (header && header.dataset.lanchaId) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const lanchaId = header.dataset.lanchaId;
+                    console.log('🔵 Touch detected on lancha:', lanchaId);
+                    toggleLanchaGroup(lanchaId);
+                }
+            }, { passive: false });
         });
 
         // ESC para fechar qualquer modal aberto
