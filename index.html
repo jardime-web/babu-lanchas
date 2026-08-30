@@ -1058,6 +1058,43 @@
             DESPESAS_LIST: 'despesasList'
         };
 
+        // ============================================
+        // MIGRAÇÃO DE CHAVES (v2.2 → v2.3)
+        // ============================================
+        function migraçaoStorageKeys() {
+            const mapeamentoAntigo = {
+                'agendamentos_abertos': STORAGE_KEYS.AGENDAMENTOS_ABERTOS,
+                'agendamentos_realizados': STORAGE_KEYS.AGENDAMENTOS_REALIZADOS,
+                'lanchas_list': STORAGE_KEYS.LANCHAS_LIST,
+                'vendedores_list': STORAGE_KEYS.VENDEDORES_LIST,
+                'despesas_list': STORAGE_KEYS.DESPESAS_LIST,
+                'app_senha': STORAGE_KEYS.ADMIN_PASSWORD,
+                'pergunta_seguranca': STORAGE_KEYS.SECURITY_QUESTION,
+                'resposta_seguranca': STORAGE_KEYS.SECURITY_ANSWER,
+                'dica_senha': STORAGE_KEYS.PASSWORD_HINT,
+                'ultimaSincronizacao': STORAGE_KEYS.LAST_SYNC_TIME
+            };
+
+            // Verificar e migrar cada chave antiga
+            Object.entries(mapeamentoAntigo).forEach(([chaveAntiga, chaveNova]) => {
+                const valorAntigo = localStorage.getItem(chaveAntiga);
+                if (valorAntigo !== null) {
+                    // Se tem valor com chave antiga E não tem com chave nova, migra
+                    if (localStorage.getItem(chaveNova) === null) {
+                        localStorage.setItem(chaveNova, valorAntigo);
+                        console.log(`✅ Migrado: ${chaveAntiga} → ${chaveNova}`);
+                    }
+                    // Deletar chave antiga após migração
+                    localStorage.removeItem(chaveAntiga);
+                }
+            });
+
+            console.log('✅ Migração de chaves concluída');
+        }
+
+        // Executar migração no load
+        migraçaoStorageKeys();
+
         let SENHA = localStorage.getItem(STORAGE_KEYS.ADMIN_PASSWORD) || "1234";
         let editMode = false;
         let lanchas = [];
