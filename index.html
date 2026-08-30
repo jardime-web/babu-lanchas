@@ -26,63 +26,67 @@
 
     <!-- Script de versionamento automático para limpar cache -->
     <script>
+        // Note: STORAGE_KEYS will be defined in the main script section below
         (function() {
             const versaoAtual = '2.3.0';
-            const versaoArmazenada = localStorage.getItem('appVersion');
 
-            console.log('🔍 Verificação de versão:');
-            console.log('Versão atual no arquivo:', versaoAtual);
-            console.log('Versão armazenada:', versaoArmazenada);
+            // Delayed execution to wait for STORAGE_KEYS to be defined
+            setTimeout(() => {
+                const versaoArmazenada = localStorage.getItem(STORAGE_KEYS.APP_VERSION);
 
-            if (versaoArmazenada !== versaoAtual) {
-                console.log('⚠️ Nova versão detectada! Limpando cache...');
+                console.log('🔍 Verificação de versão:');
+                console.log('Versão atual no arquivo:', versaoAtual);
+                console.log('Versão armazenada:', versaoArmazenada);
 
-                // Limpar localStorage (exceto dados importantes)
-                const dadosImportantes = [
-                    'agendamentos_abertos_list',
-                    'agendamentos_realizados_list',
-                    'lanchas_list',
-                    'vendedores_list',
-                    'despesas_list',
-                    'senha_admin',
-                    'pergunta_seguranca',
-                    'resposta_seguranca',
-                    'dica_senha',
-                    'numeroRecibo'
-                ];
+                if (versaoArmazenada !== versaoAtual) {
+                    console.log('⚠️ Nova versão detectada! Limpando cache...');
 
-                // Deletar todos os caches
-                if ('caches' in window) {
-                    caches.keys().then(cacheNames => {
-                        cacheNames.forEach(cacheName => {
-                            caches.delete(cacheName);
-                            console.log('✅ Cache deletado:', cacheName);
+                    // Limpar localStorage (exceto dados importantes)
+                    const dadosImportantes = [
+                        STORAGE_KEYS.AGENDAMENTOS_ABERTOS,
+                        STORAGE_KEYS.AGENDAMENTOS_REALIZADOS,
+                        STORAGE_KEYS.LANCHAS_LIST,
+                        STORAGE_KEYS.VENDEDORES_LIST,
+                        STORAGE_KEYS.DESPESAS_LIST,
+                        STORAGE_KEYS.ADMIN_PASSWORD,
+                        STORAGE_KEYS.SECURITY_QUESTION,
+                        STORAGE_KEYS.SECURITY_ANSWER,
+                        STORAGE_KEYS.PASSWORD_HINT
+                    ];
+
+                    // Deletar todos os caches
+                    if ('caches' in window) {
+                        caches.keys().then(cacheNames => {
+                            cacheNames.forEach(cacheName => {
+                                caches.delete(cacheName);
+                                console.log('✅ Cache deletado:', cacheName);
+                            });
                         });
-                    });
-                }
+                    }
 
-                // Desregistrar service worker
-                if ('serviceWorker' in navigator) {
-                    navigator.serviceWorker.getRegistrations().then(registrations => {
-                        registrations.forEach(registration => {
-                            registration.unregister();
-                            console.log('✅ Service Worker desregistrado');
+                    // Desregistrar service worker
+                    if ('serviceWorker' in navigator) {
+                        navigator.serviceWorker.getRegistrations().then(registrations => {
+                            registrations.forEach(registration => {
+                                registration.unregister();
+                                console.log('✅ Service Worker desregistrado');
+                            });
                         });
-                    });
-                }
+                    }
 
-                // Limpar IndexedDB
-                if ('indexedDB' in window) {
-                    const dbs = ['agendamentos', 'despesas', 'lanchas'];
-                    dbs.forEach(db => {
-                        const req = indexedDB.deleteDatabase(db);
-                        req.onsuccess = () => console.log('✅ IndexedDB deletado:', db);
-                    });
-                }
+                    // Limpar IndexedDB
+                    if ('indexedDB' in window) {
+                        const dbs = ['agendamentos', 'despesas', 'lanchas'];
+                        dbs.forEach(db => {
+                            const req = indexedDB.deleteDatabase(db);
+                            req.onsuccess = () => console.log('✅ IndexedDB deletado:', db);
+                        });
+                    }
 
-                // Atualizar versão armazenada
-                localStorage.setItem('appVersion', versaoAtual);
-                console.log('✅ Versão atualizada para:', versaoAtual);
+                    // Atualizar versão armazenada
+                    localStorage.setItem(STORAGE_KEYS.APP_VERSION, versaoAtual);
+                    console.log('✅ Versão atualizada para:', versaoAtual);
+                }, 100);  // Give STORAGE_KEYS time to be defined
 
                 // Fazer reload da página com cache bypass
                 console.log('🔄 Recarregando página...');
@@ -717,6 +721,10 @@
     <header>
         <h1>⛵ Agendamentos | BABU LANCHAS</h1>
         <div class="status" id="status">Visualização</div>
+        <div style="font-size: 12px; color: #999; margin-top: 5px;">
+            <span id="syncIndicator" style="display: none;">🔄 Sincronizando...</span>
+            <span id="syncError" style="display: none; color: #e74c3c;">⚠️ Erro na sincronização</span>
+        </div>
     </header>
 
     <div class="button-group">
@@ -1033,7 +1041,24 @@
     </div>
 
     <script>
-        let SENHA = localStorage.getItem('app_senha') || "1234";
+        // ============================================
+        // STORAGE KEYS - Padronização em camelCase
+        // ============================================
+        const STORAGE_KEYS = {
+            APP_VERSION: 'appVersion',
+            ADMIN_PASSWORD: 'adminPassword',
+            LAST_SYNC_TIME: 'lastSyncTime',
+            SECURITY_QUESTION: 'securityQuestion',
+            SECURITY_ANSWER: 'securityAnswer',
+            PASSWORD_HINT: 'passwordHint',
+            LANCHAS_LIST: 'lanchasList',
+            VENDEDORES_LIST: 'vendedoresList',
+            AGENDAMENTOS_ABERTOS: 'agendamentosAbertos',
+            AGENDAMENTOS_REALIZADOS: 'agendamentosRealizados',
+            DESPESAS_LIST: 'despesasList'
+        };
+
+        let SENHA = localStorage.getItem(STORAGE_KEYS.ADMIN_PASSWORD) || "1234";
         let editMode = false;
         let lanchas = [];
         let tentativasSenha = 0; // Contador de tentativas erradas
@@ -1046,20 +1071,49 @@
         let filtrosAtivos = { dataInicial: null, dataFinal: null, lancha: null, vendedor: null };
         let expandedLanchas = {}; // Rastreia qual lancha está expandida
 
+        // Cache para renderExtrato (evita re-render desnecessário)
+        let extratoCache = {
+            filtroLancha: '',
+            mesSelecionado: '',
+            html: '',
+            timestamp: 0
+        };
+
+        // Cache para evitar render duplicado de abertos/realizados
+        let abertosCacheId = null;
+        let realizadosCacheId = null;
+
         // ============================================
         // GOOGLE SHEETS SINCRONIZAÇÃO
         // ============================================
         const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzYf9_TwFfbIqf6ZpNskP2f4enaZth-M_dl8mZ2Nn6D9gAadf66epDhXmllzMUJ11rF4w/exec';
         let sincronizando = false;
-        let ultimaSincronizacao = localStorage.getItem('ultimaSincronizacao') || null;
+        let ultimaSincronizacao = localStorage.getItem(STORAGE_KEYS.LAST_SYNC_TIME) || null;
 
+        // Sincronizar em background sem bloquear UI
         async function sincronizarComGoogleSheets() {
             if (sincronizando || !navigator.onLine) return;
 
             sincronizando = true;
+            const syncIndicator = document.getElementById('syncIndicator');
+            const syncError = document.getElementById('syncError');
+
+            // Mostrar indicador discretamente
+            if (syncIndicator) {
+                syncIndicator.style.display = 'inline';
+                syncError.style.display = 'none';
+            }
+
             try {
-                // Carregar dados do Google Sheets
-                const response = await fetch(GOOGLE_APPS_SCRIPT_URL + '?acao=obterAgendamentos');
+                // Timeout de 5 segundos - se demorar mais, cancela
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+                const response = await fetch(GOOGLE_APPS_SCRIPT_URL + '?acao=obterAgendamentos', {
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
                 const dados = await response.json();
 
                 if (dados && Array.isArray(dados)) {
@@ -1069,9 +1123,23 @@
                 }
 
                 ultimaSincronizacao = new Date().toISOString();
-                localStorage.setItem('ultimaSincronizacao', ultimaSincronizacao);
+                localStorage.setItem(STORAGE_KEYS.LAST_SYNC_TIME, ultimaSincronizacao);
+
+                // Esconder indicador após 1 segundo
+                setTimeout(() => {
+                    if (syncIndicator) syncIndicator.style.display = 'none';
+                }, 1000);
+
                 console.log('✅ Sincronização com Google Sheets concluída');
             } catch (error) {
+                if (syncError) syncError.style.display = 'inline';
+                if (syncIndicator) syncIndicator.style.display = 'none';
+
+                // Esconder mensagem de erro após 3 segundos
+                setTimeout(() => {
+                    if (syncError) syncError.style.display = 'none';
+                }, 3000);
+
                 console.log('⚠️ Erro ao sincronizar:', error.message);
             } finally {
                 sincronizando = false;
@@ -1085,9 +1153,9 @@
         }, 600000); // 10 minutos
 
         // Dados de segurança
-        let perguntaSeguranca = localStorage.getItem('pergunta_seguranca') || null;
-        let respostaSeguranca = localStorage.getItem('resposta_seguranca') || null;
-        let dicaSenha = localStorage.getItem('dica_senha') || null;
+        let perguntaSeguranca = localStorage.getItem(STORAGE_KEYS.SECURITY_QUESTION) || null;
+        let respostaSeguranca = localStorage.getItem(STORAGE_KEYS.SECURITY_ANSWER) || null;
+        let dicaSenha = localStorage.getItem(STORAGE_KEYS.PASSWORD_HINT) || null;
 
         function formatarData(dataString) {
             // Converte YYYY-MM-DD para DD/MM/YYYY sem timezone
@@ -1112,7 +1180,7 @@
         }
 
         function getLanchasDoStorage() {
-            const stored = localStorage.getItem('lanchas_list');
+            const stored = localStorage.getItem(STORAGE_KEYS.LANCHAS_LIST);
             if (stored) {
                 lanchas = JSON.parse(stored);
             } else {
@@ -1121,43 +1189,44 @@
                     { id: 'lancha2', nome: 'Carpe Diem' },
                     { id: 'lancha3', nome: 'Mais C' }
                 ];
-                localStorage.setItem('lanchas_list', JSON.stringify(lanchas));
+                localStorage.setItem(STORAGE_KEYS.LANCHAS_LIST, JSON.stringify(lanchas));
             }
             updateSelectLancha();
             updateLanchaFiltro();
+            updateExtratoLanchaFilter();
         }
 
         function getVendedoresDoStorage() {
-            const stored = localStorage.getItem('vendedores_list');
+            const stored = localStorage.getItem(STORAGE_KEYS.VENDEDORES_LIST);
             if (stored) {
                 vendedores = JSON.parse(stored);
             } else {
                 vendedores = [];
-                localStorage.setItem('vendedores_list', JSON.stringify(vendedores));
+                localStorage.setItem(STORAGE_KEYS.VENDEDORES_LIST, JSON.stringify(vendedores));
             }
             updateSelectVendedor();
             updateVendedorFiltro();
         }
 
         function getAgendamentosDoStorage() {
-            const abertos = localStorage.getItem('agendamentos_abertos');
-            const realizados = localStorage.getItem('agendamentos_realizados');
+            const abertos = localStorage.getItem(STORAGE_KEYS.AGENDAMENTOS_ABERTOS);
+            const realizados = localStorage.getItem(STORAGE_KEYS.AGENDAMENTOS_REALIZADOS);
             agendamentosAbertos = abertos ? JSON.parse(abertos) : [];
             agendamentosRealizados = realizados ? JSON.parse(realizados) : [];
         }
 
         function saveAgendamentos() {
-            localStorage.setItem('agendamentos_abertos', JSON.stringify(agendamentosAbertos));
-            localStorage.setItem('agendamentos_realizados', JSON.stringify(agendamentosRealizados));
+            localStorage.setItem(STORAGE_KEYS.AGENDAMENTOS_ABERTOS, JSON.stringify(agendamentosAbertos));
+            localStorage.setItem(STORAGE_KEYS.AGENDAMENTOS_REALIZADOS, JSON.stringify(agendamentosRealizados));
         }
 
         function getDespesasDoStorage() {
-            const stored = localStorage.getItem('despesas_list');
+            const stored = localStorage.getItem(STORAGE_KEYS.DESPESAS_LIST);
             despesas = stored ? JSON.parse(stored) : [];
         }
 
         function saveDespesas() {
-            localStorage.setItem('despesas_list', JSON.stringify(despesas));
+            localStorage.setItem(STORAGE_KEYS.DESPESAS_LIST, JSON.stringify(despesas));
         }
 
         function updateSelectLancha() {
@@ -1229,8 +1298,8 @@
             } else if (tab === 'realizados') {
                 renderRealizados();
             } else if (tab === 'extrato') {
-                renderExtrato();
                 updateExtratoLanchaFilter();
+                renderExtrato();
             }
         }
 
@@ -1287,7 +1356,7 @@
             }
 
             SENHA = novaSenha;
-            localStorage.setItem('app_senha', novaSenha);
+            localStorage.setItem(STORAGE_KEYS.ADMIN_PASSWORD, novaSenha);
             document.getElementById('inputNovaSenha').value = '';
             document.getElementById('inputConfirmarSenha').value = '';
             mostrarToast('✅ Senha atualizada com sucesso!');
@@ -1312,13 +1381,13 @@
             if (pergunta && resposta) {
                 perguntaSeguranca = pergunta;
                 respostaSeguranca = resposta;
-                localStorage.setItem('pergunta_seguranca', pergunta);
-                localStorage.setItem('resposta_seguranca', resposta);
+                localStorage.setItem(STORAGE_KEYS.SECURITY_QUESTION, pergunta);
+                localStorage.setItem(STORAGE_KEYS.SECURITY_ANSWER, resposta);
             }
 
             if (dica) {
                 dicaSenha = dica;
-                localStorage.setItem('dica_senha', dica);
+                localStorage.setItem(STORAGE_KEYS.PASSWORD_HINT, dica);
             }
 
             mostrarToast('Opções de recuperação salvas!');
@@ -1359,9 +1428,11 @@
             if (novoNome.trim()) {
                 const idx = lanchas.findIndex(l => l.id === id);
                 lanchas[idx].nome = novoNome;
-                localStorage.setItem('lanchas_list', JSON.stringify(lanchas));
+                localStorage.setItem(STORAGE_KEYS.LANCHAS_LIST, JSON.stringify(lanchas));
                 updateSelectLancha();
                 updateLanchaFiltro();
+                updateExtratoLanchaFilter();
+                updateSelectDespesaLancha();
                 renderConfigLanchas();
                 mostrarToast('Lancha atualizada!');
             }
@@ -1372,7 +1443,7 @@
             if (novoNome.trim()) {
                 const idx = vendedores.findIndex(v => v.id === id);
                 vendedores[idx].nome = novoNome;
-                localStorage.setItem('vendedores_list', JSON.stringify(vendedores));
+                localStorage.setItem(STORAGE_KEYS.VENDEDORES_LIST, JSON.stringify(vendedores));
                 updateSelectVendedor();
                 updateVendedorFiltro();
                 renderConfigVendedores();
@@ -1390,9 +1461,11 @@
                 agendamentosAbertos = agendamentosAbertos.filter(a => a.lanchaId !== id);
                 agendamentosRealizados = agendamentosRealizados.filter(a => a.lanchaId !== id);
                 saveAgendamentos();
-                localStorage.setItem('lanchas_list', JSON.stringify(lanchas));
+                localStorage.setItem(STORAGE_KEYS.LANCHAS_LIST, JSON.stringify(lanchas));
                 updateSelectLancha();
                 updateLanchaFiltro();
+                updateExtratoLanchaFilter();
+                updateSelectDespesaLancha();
                 renderConfigLanchas();
                 mostrarToast('Lancha deletada!');
             }
@@ -1401,7 +1474,7 @@
         function deletarVendedor(id) {
             if (confirm('Deletar este vendedor?')) {
                 vendedores = vendedores.filter(v => v.id !== id);
-                localStorage.setItem('vendedores_list', JSON.stringify(vendedores));
+                localStorage.setItem(STORAGE_KEYS.VENDEDORES_LIST, JSON.stringify(vendedores));
                 updateSelectVendedor();
                 updateVendedorFiltro();
                 renderConfigVendedores();
@@ -1418,10 +1491,12 @@
 
             const id = 'lancha_' + Date.now();
             lanchas.push({ id, nome });
-            localStorage.setItem('lanchas_list', JSON.stringify(lanchas));
+            localStorage.setItem(STORAGE_KEYS.LANCHAS_LIST, JSON.stringify(lanchas));
             document.getElementById('inputNovaLancha').value = '';
             updateSelectLancha();
             updateLanchaFiltro();
+            updateExtratoLanchaFilter();
+            updateSelectDespesaLancha();
             renderConfigLanchas();
             mostrarToast('Lancha adicionada!');
         }
@@ -1435,7 +1510,7 @@
 
             const id = 'vend_' + Date.now();
             vendedores.push({ id, nome });
-            localStorage.setItem('vendedores_list', JSON.stringify(vendedores));
+            localStorage.setItem(STORAGE_KEYS.VENDEDORES_LIST, JSON.stringify(vendedores));
             document.getElementById('inputNovoVendedor').value = '';
             updateSelectVendedor();
             updateVendedorFiltro();
@@ -1468,7 +1543,8 @@
                 renderAbertos();
                 renderRealizados();
                 renderExtrato();
-                renderDashboard();
+                // Garantir que o dashboard seja renderizado com editMode = true
+                setTimeout(() => renderDashboard(), 50);
                 mostrarToast('✅ Modo Administrador ativado!');
             } else {
                 tentativasSenha++;
@@ -1563,10 +1639,11 @@
 
         function updateSelectDespesaLancha() {
             const select = document.getElementById('despesaLancha');
-            select.innerHTML = '<option value="todas">Todas as lanchas</option>';
+            let html = '<option value="todas">Todas as lanchas</option>';
             lanchas.forEach(l => {
-                select.innerHTML += `<option value="${l.id}">${l.nome}</option>`;
+                html += `<option value="${l.id}">${l.nome}</option>`;
             });
+            select.innerHTML = html;
         }
 
         function salvarDespesa() {
@@ -1594,8 +1671,11 @@
 
             saveDespesas();
             fecharModalAdicionarDespesa();
-            renderExtrato();
-            mostrarToast('Despesa adicionada!');
+            updateExtratoLanchaFilter();
+            setTimeout(() => {
+                renderExtrato();
+                mostrarToast('Despesa adicionada!');
+            }, 100);
         }
 
         function deletarDespesa(id) {
@@ -1629,10 +1709,11 @@
 
         function updateEditSelectDespesaLancha() {
             const select = document.getElementById('editDespesaLancha');
-            select.innerHTML = '<option value="todas">Todas as lanchas</option>';
+            let html = '<option value="todas">Todas as lanchas</option>';
             lanchas.forEach(l => {
-                select.innerHTML += `<option value="${l.id}">${l.nome}</option>`;
+                html += `<option value="${l.id}">${l.nome}</option>`;
             });
+            select.innerHTML = html;
         }
 
         function fecharModalEditarDespesa() {
@@ -1885,6 +1966,14 @@
 
         function renderAbertos() {
             const agendamentosFiltrados = filtrarAgendamentos(agendamentosAbertos);
+
+            // 🚀 OTIMIZAÇÃO: Evitar re-render se data não mudou
+            const cacheId = JSON.stringify(agendamentosFiltrados.map(a => a.id).sort()).slice(0, 50);
+            if (abertosCacheId === cacheId) {
+                return; // Dados não mudaram, skip render
+            }
+            abertosCacheId = cacheId;
+
             const list = document.getElementById('listaAbertos');
             const summary = document.getElementById('summaryAbertos');
 
@@ -1909,10 +1998,13 @@
 
                     return `
                         <div class="lancha-group">
-                            <div class="lancha-group-header" onclick="toggleLanchaGroup('${lanchaId}')" style="cursor: pointer; display: flex; align-items: center; padding: 12px; background: #f5f5f5; border-radius: 6px; margin-bottom: 12px; user-select: none; border-left: 4px solid #3498db;">
-                                <span class="lancha-toggle" style="font-size: 16px; margin-right: 10px; transition: transform 0.2s;">${isExpanded ? '▼' : '▶'}</span>
-                                <span style="font-weight: bold; flex: 1; font-size: 15px;">🚤 ${lanchaObj?.nome || 'Lancha Desconhecida'} <span style="font-size: 12px; color: #666;">(${lanchaAgends.length} passeio${lanchaAgends.length !== 1 ? 's' : ''})</span></span>
-                                ${proximoPasseio ? `<span style="font-size: 13px; color: #666;">• Próximo: ${formatarData(proximoPasseio.data)}</span>` : ''}
+                            <div class="lancha-group-header" onclick="toggleLanchaGroup('${lanchaId}')" style="cursor: pointer; display: flex; gap: 15px; align-items: flex-start; padding: 12px; background: #f5f5f5; border-radius: 6px; margin-bottom: 12px; user-select: none; border-left: 4px solid #3498db;">
+                                <span class="lancha-toggle" style="font-size: 16px; margin-top: 2px; transition: transform 0.2s; flex-shrink: 0;">${isExpanded ? '▼' : '▶'}</span>
+                                <div style="flex: 1;">
+                                    <div style="font-weight: bold; font-size: 15px; margin-bottom: 4px;">🚤 ${lanchaObj?.nome || 'Lancha Desconhecida'}</div>
+                                    <div style="font-size: 12px; color: #666;">${lanchaAgends.length} passeio${lanchaAgends.length !== 1 ? 's' : ''}</div>
+                                </div>
+                                ${proximoPasseio ? `<span style="font-size: 13px; color: #666; white-space: nowrap;">• Próximo: ${formatarData(proximoPasseio.data)}</span>` : ''}
                             </div>
                             ${isExpanded ? `
                                 <div class="lancha-group-content">
@@ -1981,13 +2073,24 @@
         }
 
         function renderRealizados() {
+            // 🚀 OTIMIZAÇÃO: Evitar re-render se data não mudou
+            const cacheId = JSON.stringify(agendamentosRealizados.map(a => a.id).sort()).slice(0, 50);
+            if (realizadosCacheId === cacheId) {
+                return; // Dados não mudaram, skip render
+            }
+            realizadosCacheId = cacheId;
+
             const list = document.getElementById('listaRealizados');
             const summary = document.getElementById('summaryRealizados');
 
             if (agendamentosRealizados.length === 0) {
                 list.innerHTML = '<div class="empty">Nenhum agendamento realizado</div>';
             } else {
-                const sorted = [...agendamentosRealizados].sort((a, b) => new Date(b.dataRealizacao) - new Date(a.dataRealizacao));
+                const sorted = [...agendamentosRealizados].sort((a, b) => {
+                    const dataA = new Date(a.dataRealizacao || a.dataCriacao || a.data);
+                    const dataB = new Date(b.dataRealizacao || b.dataCriacao || b.data);
+                    return dataB - dataA;
+                });
                 const grouped = {};
 
                 sorted.forEach(a => {
@@ -2005,10 +2108,13 @@
 
                     return `
                         <div class="lancha-group">
-                            <div class="lancha-group-header" onclick="toggleLanchaGroup('${lanchaId}')" style="cursor: pointer; display: flex; align-items: center; padding: 12px; background: #f5f5f5; border-radius: 6px; margin-bottom: 12px; user-select: none; border-left: 4px solid #95a5a6;">
-                                <span class="lancha-toggle" style="font-size: 16px; margin-right: 10px; transition: transform 0.2s;">${isExpanded ? '▼' : '▶'}</span>
-                                <span style="font-weight: bold; flex: 1; font-size: 15px;">🚤 ${lanchaObj?.nome || 'Lancha Desconhecida'} <span style="font-size: 12px; color: #666;">(${lanchaAgends.length} passeio${lanchaAgends.length !== 1 ? 's' : ''})</span></span>
-                                ${ultimoPasseio ? `<span style="font-size: 13px; color: #666;">• Último: ${formatarData(ultimoPasseio.data)}</span>` : ''}
+                            <div class="lancha-group-header" onclick="toggleLanchaGroup('${lanchaId}')" style="cursor: pointer; display: flex; gap: 15px; align-items: flex-start; padding: 12px; background: #f5f5f5; border-radius: 6px; margin-bottom: 12px; user-select: none; border-left: 4px solid #95a5a6;">
+                                <span class="lancha-toggle" style="font-size: 16px; margin-top: 2px; transition: transform 0.2s; flex-shrink: 0;">${isExpanded ? '▼' : '▶'}</span>
+                                <div style="flex: 1;">
+                                    <div style="font-weight: bold; font-size: 15px; margin-bottom: 4px;">🚤 ${lanchaObj?.nome || 'Lancha Desconhecida'}</div>
+                                    <div style="font-size: 12px; color: #666;">${lanchaAgends.length} passeio${lanchaAgends.length !== 1 ? 's' : ''}</div>
+                                </div>
+                                ${ultimoPasseio ? `<span style="font-size: 13px; color: #666; white-space: nowrap;">• Último: ${formatarData(ultimoPasseio.data)}</span>` : ''}
                             </div>
                             ${isExpanded ? `
                                 <div class="lancha-group-content">
@@ -2386,23 +2492,38 @@
                 `;
             });
 
+            // Remove existing modal to prevent accumulation
+            const existingModal = document.getElementById('agendamentosPreviewModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+
             const modal = document.createElement('div');
+            modal.id = 'agendamentosPreviewModal';
             modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1001; padding: 10px;';
             modal.innerHTML = `
                 <div style="background: white; padding: 20px; border-radius: 8px; max-width: 400px; width: 100%; max-height: 70vh; overflow-y: auto;">
                     ${html}
-                    <button class="btn-cancel" onclick="this.parentElement.parentElement.remove()" style="width: 100%; margin-top: 15px;">Fechar</button>
+                    <button class="btn-cancel" style="width: 100%; margin-top: 15px;">Fechar</button>
                 </div>
             `;
+
+            // Add event listener instead of inline onclick
+            const closeButton = modal.querySelector('.btn-cancel');
+            closeButton.addEventListener('click', (e) => {
+                e.target.closest('#agendamentosPreviewModal').remove();
+            });
+
             document.body.appendChild(modal);
         }
 
         function updateExtratoLanchaFilter() {
             const select = document.getElementById('extratoFiltroLancha');
-            select.innerHTML = '<option value="">Total Geral</option>';
+            let html = '<option value="">Total Geral</option>';
             lanchas.forEach(l => {
-                select.innerHTML += `<option value="${l.id}">${l.nome}</option>`;
+                html += `<option value="${l.id}">${l.nome}</option>`;
             });
+            select.innerHTML = html;
         }
 
         function getDashboardResumo() {
@@ -2470,6 +2591,13 @@
             }
             const mesAtual = mesSelecionado;
 
+            // 🚀 OTIMIZAÇÃO: Verificar se filtros mudaram
+            // Se não mudou, não re-renderiza
+            const cacheKey = `${filtroLancha}|${mesAtual}|${editMode}`;
+            if (extratoCache.cacheKey === cacheKey && Date.now() - extratoCache.timestamp < 100) {
+                return; // Sem mudança, skip
+            }
+
             let totalRecebido = 0, totalSolicitado = 0;
             const agendamentosFiltrados = [...agendamentosAbertos, ...agendamentosRealizados].filter(a => {
                 const mesAgendamento = a.data.substring(0, 7);
@@ -2506,8 +2634,10 @@
 
             const lucroLiquido = totalRecebido - totalDespesas;
 
-            // Renderizar resumo
-            let html = `
+            // 🚀 OTIMIZAÇÃO: Usar DocumentFragment para construir antes de inserir
+            const resumoFragment = document.createDocumentFragment();
+            const resumoDiv = document.createElement('div');
+            resumoDiv.innerHTML = `
                 <h3 style="margin-bottom: 15px;">📈 Faturamento</h3>
                 <div style="background: #f9f9f9; padding: 12px; border-radius: 6px; margin-bottom: 15px;">
                     <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #eee;">
@@ -2524,8 +2654,9 @@
                     </div>
                 </div>
             `;
-
-            document.getElementById('resumoExtrato').innerHTML = html;
+            const resumoExtrato = document.getElementById('resumoExtrato');
+            resumoExtrato.innerHTML = '';
+            resumoExtrato.appendChild(resumoDiv);
 
             // Renderizar despesas
             let despesasHtml = '';
@@ -2581,6 +2712,9 @@
             }
 
             document.getElementById('listaDespesas').innerHTML = despesasHtml;
+
+            // Atualizar cache
+            extratoCache = { cacheKey, timestamp: Date.now() };
         }
 
         function exportarDados() {
@@ -2624,7 +2758,9 @@
             const hoje = new Date();
             const ano = hoje.getFullYear();
             const mes = String(hoje.getMonth() + 1).padStart(2, '0');
-            document.getElementById('mesFiltro').value = `${ano}-${mes}`;
+            const mesDefault = `${ano}-${mes}`;
+            document.getElementById('mesFiltro').value = mesDefault;
+            document.getElementById('extratoFiltroMes').value = mesDefault;
 
             // Validar input de senha (apenas números)
             document.getElementById('inputSenha').addEventListener('input', (e) => {
