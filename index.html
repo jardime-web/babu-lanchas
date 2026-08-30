@@ -2954,18 +2954,18 @@
                     </div>
 
                     <!-- PASSEIOS DETALHADOS -->
-                    <div style="margin-bottom: 30px; page-break-inside: avoid;">
+                    <div style="margin-bottom: 30px;">
                         <h3 style="color: #1a5f7a; border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-bottom: 15px;">🚤 PASSEIOS REALIZADOS</h3>
-                        ${agendamentosOrdenados.length === 0 ? '<div class="empty">Nenhum passeio neste período</div>' : `
+                        ${agendamentosOrdenados.length === 0 ? '<div style="padding: 15px; text-align: center; color: #999;">Nenhum passeio neste período</div>' : `
                             <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
                                 <thead>
                                     <tr style="background: #3498db; color: white;">
-                                        <th style="padding: 10px; text-align: left;">Data</th>
-                                        <th style="padding: 10px; text-align: left;">Cliente</th>
-                                        <th style="padding: 10px; text-align: left;">Lancha</th>
-                                        <th style="padding: 10px; text-align: right;">Solicitado</th>
-                                        <th style="padding: 10px; text-align: right;">Recebido</th>
-                                        <th style="padding: 10px; text-align: right;">Saldo</th>
+                                        <th style="padding: 12px; text-align: center; border: 1px solid #2980b9; font-weight: bold;">Data</th>
+                                        <th style="padding: 12px; text-align: center; border: 1px solid #2980b9; font-weight: bold;">Cliente</th>
+                                        <th style="padding: 12px; text-align: center; border: 1px solid #2980b9; font-weight: bold;">Lancha</th>
+                                        <th style="padding: 12px; text-align: center; border: 1px solid #2980b9; font-weight: bold;">Solicitado</th>
+                                        <th style="padding: 12px; text-align: center; border: 1px solid #2980b9; font-weight: bold;">Recebido</th>
+                                        <th style="padding: 12px; text-align: center; border: 1px solid #2980b9; font-weight: bold;">Saldo</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -2973,13 +2973,13 @@
                                         const saldo = a.pedido - a.recebido;
                                         const bgColor = idx % 2 === 0 ? '#f9f9f9' : 'white';
                                         return `
-                                            <tr style="background: ${bgColor}; border-bottom: 1px solid #eee;">
-                                                <td style="padding: 10px;">${formatarData(a.data)}</td>
-                                                <td style="padding: 10px;">${a.cliente}</td>
-                                                <td style="padding: 10px;">${a.lanchaNome}</td>
-                                                <td style="padding: 10px; text-align: right; font-weight: bold;">${formatarValor(a.pedido)}</td>
-                                                <td style="padding: 10px; text-align: right; font-weight: bold; color: #27ae60;">${formatarValor(a.recebido)}</td>
-                                                <td style="padding: 10px; text-align: right; font-weight: bold; color: ${saldo > 0 ? '#e74c3c' : '#27ae60'};">${formatarValor(saldo)}</td>
+                                            <tr style="background: ${bgColor}; height: 40px;">
+                                                <td style="padding: 10px; border: 1px solid #ddd; text-align: center;">${formatarData(a.data)}</td>
+                                                <td style="padding: 10px; border: 1px solid #ddd; text-align: center;">${a.cliente}</td>
+                                                <td style="padding: 10px; border: 1px solid #ddd; text-align: center;">${a.lanchaNome}</td>
+                                                <td style="padding: 10px; border: 1px solid #ddd; text-align: right; font-weight: bold;">${formatarValor(a.pedido)}</td>
+                                                <td style="padding: 10px; border: 1px solid #ddd; text-align: right; font-weight: bold; color: #27ae60;">${formatarValor(a.recebido)}</td>
+                                                <td style="padding: 10px; border: 1px solid #ddd; text-align: right; font-weight: bold; color: ${saldo > 0 ? '#e74c3c' : '#27ae60'};">${formatarValor(saldo)}</td>
                                             </tr>
                                         `;
                                     }).join('')}
@@ -3055,6 +3055,17 @@
         }
 
         function abrirExtratoParaImpressao() {
+            // Obter mês e ano para o nome do arquivo
+            let mesSelecionado = document.getElementById('extratoFiltroMes').value;
+            const hoje = new Date();
+            const mesDefault = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+            if (!mesSelecionado) mesSelecionado = mesDefault;
+
+            const [ano, mes] = mesSelecionado.split('-');
+            const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+            const mesNome = meses[parseInt(mes) - 1];
+            const nomeArquivo = `Extrato_${mesNome}_${ano}`;
+
             // Ocultar modal antes de imprimir
             const modal = document.getElementById('extratoCompletoModal');
             const printDiv = document.getElementById('extratoCompletoParaPrinter');
@@ -3062,14 +3073,61 @@
             if (modal) modal.style.display = 'none';
             if (printDiv) printDiv.style.display = 'block';
 
+            // Mudar título da página para refletir no nome do arquivo PDF
+            const oldTitle = document.title;
+            document.title = nomeArquivo;
+
             // Adicionar estilos de impressão temporários
             const styleTag = document.createElement('style');
             styleTag.id = 'printStyles';
             styleTag.innerHTML = `
                 @media print {
+                    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
                     body > * { display: none !important; }
                     #extratoCompletoParaPrinter { display: block !important; }
-                    #extratoCompletoParaPrinter * { display: block !important; }
+
+                    #extratoCompletoParaPrinter h1,
+                    #extratoCompletoParaPrinter h2,
+                    #extratoCompletoParaPrinter h3,
+                    #extratoCompletoParaPrinter h4,
+                    #extratoCompletoParaPrinter h5,
+                    #extratoCompletoParaPrinter h6,
+                    #extratoCompletoParaPrinter div,
+                    #extratoCompletoParaPrinter p { display: block !important; }
+
+                    #extratoCompletoParaPrinter table { display: table !important; width: 100% !important; border-collapse: collapse !important; margin: 15px 0 !important; }
+                    #extratoCompletoParaPrinter thead { display: table-header-group !important; }
+                    #extratoCompletoParaPrinter tbody { display: table-row-group !important; }
+                    #extratoCompletoParaPrinter tr { display: table-row !important; }
+                    #extratoCompletoParaPrinter th,
+                    #extratoCompletoParaPrinter td { display: table-cell !important; }
+
+                    #extratoCompletoParaPrinter table thead tr {
+                        background: #3498db !important;
+                        color: white !important;
+                    }
+                    #extratoCompletoParaPrinter table thead th {
+                        background: #3498db !important;
+                        color: white !important;
+                        border: 1px solid #2980b9 !important;
+                        padding: 12px !important;
+                        font-weight: bold !important;
+                        text-align: center !important;
+                    }
+                    #extratoCompletoParaPrinter table tbody tr {
+                        page-break-inside: avoid !important;
+                    }
+                    #extratoCompletoParaPrinter table tbody td {
+                        border: 1px solid #ddd !important;
+                        padding: 10px !important;
+                    }
+                    #extratoCompletoParaPrinter table tbody tr:nth-child(odd) {
+                        background: #f9f9f9 !important;
+                    }
+                    #extratoCompletoParaPrinter table tbody tr:nth-child(even) {
+                        background: white !important;
+                    }
+                    @page { margin: 10mm; }
                 }
             `;
             document.head.appendChild(styleTag);
@@ -3081,6 +3139,7 @@
                 // Restaurar após impressão
                 setTimeout(() => {
                     if (styleTag) styleTag.remove();
+                    document.title = oldTitle;
                     if (printDiv) printDiv.style.display = 'none';
                     if (modal) modal.style.display = 'flex';
                 }, 100);
