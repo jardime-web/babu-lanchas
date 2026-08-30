@@ -1073,7 +1073,7 @@
         // ============================================
         // GOOGLE SHEETS SINCRONIZAÇÃO
         // ============================================
-        const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzYf9_TwFfbIqf6ZpNskP2f4enaZth-M_dl8mZ2Nn6D9gAadf66epDhXmllzMUJ11rF4w/exec';
+        const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzKqcMApyWKwhmGK6vagS6Q-1QFqnGa-hNgAP3JDVipvGJ3SFBRWmLUW1AX5C8QBBMfGQ/exec';
         let sincronizando = false;
         let ultimaSincronizacao = localStorage.getItem(STORAGE_KEYS.LAST_SYNC_TIME) || null;
 
@@ -1096,11 +1096,13 @@
                 };
 
                 try {
-                    await fetch(GOOGLE_APPS_SCRIPT_URL, {
+                    const fetchResponse = await fetch(GOOGLE_APPS_SCRIPT_URL, {
                         method: 'POST',
-                        payload: JSON.stringify(dadosParaEnviar)
+                        body: JSON.stringify(dadosParaEnviar)  // ✅ CORRIGIDO: body em vez de payload
                     });
-                    console.log('✅ Dados enviados para Google Sheets');
+                    console.log('✅ Dados enviados para Google Sheets:', fetchResponse.status);
+                    const responseText = await fetchResponse.text();
+                    console.log('✅ Resposta do Google Apps Script:', responseText);
                 } catch (e) {
                     console.warn('⚠️ Erro ao enviar dados:', e.message);
                 }
