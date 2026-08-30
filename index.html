@@ -980,8 +980,12 @@
             </div>
             <button class="btn-primary" onclick="alterarSenha()" style="margin-bottom: 15px; width: 100%;" aria-label="Atualizar senha do modo administrador">Atualizar Senha</button>
 
-            <h3 style="margin-top: 20px; margin-bottom: 10px;">📥 Backup</h3>
-            <button class="btn-primary" onclick="exportarDados()" style="width: 100%;" aria-label="Fazer backup de todos os dados em arquivo JSON">📥 Fazer Backup (JSON)</button>
+            <h3 style="margin-top: 20px; margin-bottom: 10px;">📥 Backup & Recuperação</h3>
+            <button class="btn-primary" onclick="exportarDados()" style="width: 100%; margin-bottom: 8px;" aria-label="Fazer backup de todos os dados em arquivo JSON">📥 Fazer Backup (JSON)</button>
+            <button class="btn-primary" onclick="importarDados()" style="width: 100%;" aria-label="Restaurar backup de um arquivo JSON">📂 Restaurar Backup</button>
+            <div style="font-size: 11px; color: #999; margin-top: 10px; padding: 8px; background: #f5f5f5; border-radius: 4px; border-left: 3px solid #3498db;">
+                ✅ Backup automático: Seu data é salvo em múltiplos locais (localStorage, IndexedDB, Google Sheets)
+            </div>
 
             <div class="modal-actions" style="margin-top: 20px;">
                 <button class="btn-cancel" onclick="fecharModalConfig()" aria-label="Fechar configurações">Fechar</button>
@@ -1121,6 +1125,161 @@
         let realizadosCacheId = null;
 
         // ============================================
+        // SISTEMA DE BACKUP E PROTEÇÃO DE DADOS (v2.3.1)
+        // ============================================
+        const BACKUP_DB_NAME = 'babulanchas_backup';
+        const BACKUP_STORE_NAME = 'backups';
+
+        // Inicializar IndexedDB para backup redundante
+        let backupDB = null;
+
+        function inicializarBackupDB() {
+            return new Promise((resolve) => {
+                const request = indexedDB.open(BACKUP_DB_NAME, 1);
+
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains(BACKUP_STORE_NAME)) {
+                        db.createObjectStore(BACKUP_STORE_NAME);
+                    }
+                };
+
+                request.onsuccess = () => {
+                    backupDB = request.result;
+                    resolve();
+                };
+
+                request.onerror = () => {
+                    console.warn('⚠️ IndexedDB não disponível');
+                    resolve();
+                };
+            });
+        }
+
+        // Salvar backup em IndexedDB
+        function salvarBackupIndexedDB() {
+            if (!backupDB) return;
+
+            const backup = {
+                timestamp: new Date().toISOString(),
+                versao: '2.3.1',
+                dados: {
+                    lanchas,
+                    vendedores,
+                    agendamentosAbertos,
+                    agendamentosRealizados,
+                    despesas
+                }
+            };
+
+            try {
+                const transaction = backupDB.transaction([BACKUP_STORE_NAME], 'readwrite');
+                const store = transaction.objectStore(BACKUP_STORE_NAME);
+                store.put(backup, 'latest_backup');
+                console.log('💾 Backup IndexedDB salvo:', backup.timestamp);
+            } catch (error) {
+                console.warn('⚠️ Erro ao salvar backup IndexedDB:', error);
+            }
+        }
+
+        // Restaurar backup do IndexedDB
+        function restaurarBackupIndexedDB() {
+            return new Promise((resolve) => {
+                if (!backupDB) {
+                    resolve(null);
+                    return;
+                }
+
+                try {
+                    const transaction = backupDB.transaction([BACKUP_STORE_NAME], 'readonly');
+                    const store = transaction.objectStore(BACKUP_STORE_NAME);
+                    const request = store.get('latest_backup');
+
+                    request.onsuccess = () => {
+                        resolve(request.result);
+                    };
+
+                    request.onerror = () => {
+                        resolve(null);
+                    };
+                } catch (error) {
+                    console.warn('⚠️ Erro ao restaurar backup IndexedDB:', error);
+                    resolve(null);
+                }
+            });
+        }
+
+        // Validar integridade de dados
+        function validarIntegridade() {
+            const erros = [];
+
+            // Verificar se arrays não estão vazios quando deveriam ter dados
+            if (agendamentosAbertos && !Array.isArray(agendamentosAbertos)) {
+                erros.push('agendamentosAbertos não é array');
+            }
+            if (agendamentosRealizados && !Array.isArray(agendamentosRealizados)) {
+                erros.push('agendamentosRealizados não é array');
+            }
+            if (despesas && !Array.isArray(despesas)) {
+                erros.push('despesas não é array');
+            }
+            if (lanchas && !Array.isArray(lanchas)) {
+                erros.push('lanchas não é array');
+            }
+
+            // Se havia dados antes e agora estão vazios, é suspeito
+            const backupAnterior = sessionStorage.getItem('lastDataState');
+            if (backupAnterior) {
+                const anterior = JSON.parse(backupAnterior);
+                if (anterior.total > 0 && (agendamentosAbertos.length + agendamentosRealizados.length + despesas.length) === 0) {
+                    erros.push('Perda massiva de dados detectada!');
+                }
+            }
+
+            return erros.length === 0 ? null : erros;
+        }
+
+        // Salvar estado anterior para comparação
+        function salvarEstadoAtual() {
+            sessionStorage.setItem('lastDataState', JSON.stringify({
+                total: agendamentosAbertos.length + agendamentosRealizados.length + despesas.length,
+                timestamp: Date.now()
+            }));
+        }
+
+        // Função de restore automático
+        async function restaurarDadosSeNecessario() {
+            // Verificar integridade
+            const erros = validarIntegridade();
+
+            if (erros) {
+                console.warn('⚠️ Problemas detectados:', erros);
+
+                // Tentar restaurar de IndexedDB
+                const backup = await restaurarBackupIndexedDB();
+                if (backup && backup.dados) {
+                    console.log('🔄 Restaurando dados de backup IndexedDB...');
+                    lanchas = backup.dados.lanchas || [];
+                    vendedores = backup.dados.vendedores || [];
+                    agendamentosAbertos = backup.dados.agendamentosAbertos || [];
+                    agendamentosRealizados = backup.dados.agendamentosRealizados || [];
+                    despesas = backup.dados.despesas || [];
+
+                    // Salvar restaurado para localStorage
+                    saveAgendamentos();
+                    localStorage.setItem(STORAGE_KEYS.LANCHAS_LIST, JSON.stringify(lanchas));
+                    localStorage.setItem(STORAGE_KEYS.VENDEDORES_LIST, JSON.stringify(vendedores));
+                    localStorage.setItem(STORAGE_KEYS.DESPESAS_LIST, JSON.stringify(despesas));
+
+                    mostrarToast('✅ Dados restaurados de backup!');
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        // ============================================
         // GOOGLE SHEETS SINCRONIZAÇÃO
         // ============================================
         const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzYf9_TwFfbIqf6ZpNskP2f4enaZth-M_dl8mZ2Nn6D9gAadf66epDhXmllzMUJ11rF4w/exec';
@@ -1255,6 +1414,8 @@
         function saveAgendamentos() {
             localStorage.setItem(STORAGE_KEYS.AGENDAMENTOS_ABERTOS, JSON.stringify(agendamentosAbertos));
             localStorage.setItem(STORAGE_KEYS.AGENDAMENTOS_REALIZADOS, JSON.stringify(agendamentosRealizados));
+            // 🔒 Salvar backup redundante
+            salvarBackupIndexedDB();
         }
 
         function getDespesasDoStorage() {
@@ -1264,6 +1425,8 @@
 
         function saveDespesas() {
             localStorage.setItem(STORAGE_KEYS.DESPESAS_LIST, JSON.stringify(despesas));
+            // 🔒 Salvar backup redundante
+            salvarBackupIndexedDB();
         }
 
         function updateSelectLancha() {
@@ -2005,7 +2168,9 @@
             const agendamentosFiltrados = filtrarAgendamentos(agendamentosAbertos);
 
             // 🚀 OTIMIZAÇÃO: Evitar re-render se data não mudou
-            const cacheId = JSON.stringify(agendamentosFiltrados.map(a => a.id).sort()).slice(0, 50);
+            // MAS incluir expandedLanchas no cache pra detectar cliques de expand!
+            const expandedState = JSON.stringify(expandedLanchas);
+            const cacheId = (JSON.stringify(agendamentosFiltrados.map(a => a.id).sort()) + expandedState).slice(0, 100);
             if (abertosCacheId === cacheId) {
                 return; // Dados não mudaram, skip render
             }
@@ -2111,7 +2276,9 @@
 
         function renderRealizados() {
             // 🚀 OTIMIZAÇÃO: Evitar re-render se data não mudou
-            const cacheId = JSON.stringify(agendamentosRealizados.map(a => a.id).sort()).slice(0, 50);
+            // MAS incluir expandedLanchas no cache pra detectar cliques de expand!
+            const expandedState = JSON.stringify(expandedLanchas);
+            const cacheId = (JSON.stringify(agendamentosRealizados.map(a => a.id).sort()) + expandedState).slice(0, 100);
             if (realizadosCacheId === cacheId) {
                 return; // Dados não mudaram, skip render
             }
@@ -2761,7 +2928,8 @@
                 agendamentosAbertos,
                 agendamentosRealizados,
                 despesas,
-                dataExporte: new Date().toISOString()
+                dataExporte: new Date().toISOString(),
+                versao: '2.3.1'
             };
 
             const json = JSON.stringify(dados, null, 2);
@@ -2772,7 +2940,56 @@
             a.download = `backup_babu_lanchas_${new Date().toISOString().split('T')[0]}.json`;
             a.click();
             URL.revokeObjectURL(url);
-            mostrarToast('Backup realizado!');
+            mostrarToast('✅ Backup baixado! Guarde em local seguro!');
+        }
+
+        // 🔒 Importar backup de arquivo
+        function importarDados() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const backup = JSON.parse(event.target.result);
+
+                        // Validar backup
+                        if (!backup.lanchas || !backup.agendamentosAbertos) {
+                            throw new Error('Arquivo de backup inválido!');
+                        }
+
+                        // Restaurar dados
+                        lanchas = backup.lanchas || [];
+                        vendedores = backup.vendedores || [];
+                        agendamentosAbertos = backup.agendamentosAbertos || [];
+                        agendamentosRealizados = backup.agendamentosRealizados || [];
+                        despesas = backup.despesas || [];
+
+                        // Salvar tudo
+                        saveAgendamentos();
+                        localStorage.setItem(STORAGE_KEYS.LANCHAS_LIST, JSON.stringify(lanchas));
+                        localStorage.setItem(STORAGE_KEYS.VENDEDORES_LIST, JSON.stringify(vendedores));
+                        localStorage.setItem(STORAGE_KEYS.DESPESAS_LIST, JSON.stringify(despesas));
+
+                        // Salvar em backup DB também
+                        salvarBackupIndexedDB();
+
+                        mostrarToast('✅ Backup restaurado com sucesso! Recarregando...');
+                        setTimeout(() => location.reload(), 1500);
+                    } catch (error) {
+                        mostrarToast('❌ Erro ao restaurar backup: ' + error.message);
+                    }
+                };
+
+                reader.readAsText(file);
+            };
+
+            input.click();
         }
 
         function mostrarToast(msg) {
@@ -2783,11 +3000,24 @@
             setTimeout(() => toast.remove(), 2000);
         }
 
-        window.addEventListener('load', () => {
+        window.addEventListener('load', async () => {
+            // 🔒 Inicializar sistema de backup
+            await inicializarBackupDB();
+
             getLanchasDoStorage();
             getVendedoresDoStorage();
             getAgendamentosDoStorage();
             getDespesasDoStorage();
+
+            // 🔒 Validar integridade e restaurar se necessário
+            await restaurarDadosSeNecessario();
+
+            // 🔒 Salvar estado inicial para monitoramento
+            salvarEstadoAtual();
+
+            // 🔒 Salvar backup em IndexedDB
+            salvarBackupIndexedDB();
+
             renderAbertos();
             renderDashboard();
 
