@@ -2200,7 +2200,7 @@
 
                     return `
                         <div class="lancha-group">
-                            <div class="lancha-group-header" onclick="toggleLanchaGroup('${lanchaId}')" style="cursor: pointer; display: flex; gap: 15px; align-items: flex-start; padding: 12px; background: #f5f5f5; border-radius: 6px; margin-bottom: 12px; user-select: none; border-left: 4px solid #3498db;">
+                            <div class="lancha-group-header" data-lancha-id="${lanchaId}" style="cursor: pointer; display: flex; gap: 15px; align-items: flex-start; padding: 12px; background: #f5f5f5; border-radius: 6px; margin-bottom: 12px; user-select: none; border-left: 4px solid #3498db;">
                                 <span class="lancha-toggle" style="font-size: 16px; margin-top: 2px; transition: transform 0.2s; flex-shrink: 0;">${isExpanded ? '▼' : '▶'}</span>
                                 <div style="flex: 1;">
                                     <div style="font-weight: bold; font-size: 15px; margin-bottom: 4px;">🚤 ${lanchaObj?.nome || 'Lancha Desconhecida'}</div>
@@ -2312,7 +2312,7 @@
 
                     return `
                         <div class="lancha-group">
-                            <div class="lancha-group-header" onclick="toggleLanchaGroup('${lanchaId}')" style="cursor: pointer; display: flex; gap: 15px; align-items: flex-start; padding: 12px; background: #f5f5f5; border-radius: 6px; margin-bottom: 12px; user-select: none; border-left: 4px solid #95a5a6;">
+                            <div class="lancha-group-header" data-lancha-id="${lanchaId}" style="cursor: pointer; display: flex; gap: 15px; align-items: flex-start; padding: 12px; background: #f5f5f5; border-radius: 6px; margin-bottom: 12px; user-select: none; border-left: 4px solid #95a5a6;">
                                 <span class="lancha-toggle" style="font-size: 16px; margin-top: 2px; transition: transform 0.2s; flex-shrink: 0;">${isExpanded ? '▼' : '▶'}</span>
                                 <div style="flex: 1;">
                                     <div style="font-weight: bold; font-size: 15px; margin-bottom: 4px;">🚤 ${lanchaObj?.nome || 'Lancha Desconhecida'}</div>
@@ -3053,6 +3053,29 @@
             if (searchVendedorInput) {
                 searchVendedorInput.addEventListener('input', filterVendedores);
             }
+
+            // 🎯 EVENT DELEGATION: Cliques em lancha-group-header (Abertos e Realizados)
+            // Isso é mais confiável em mobile que onclick inline
+            document.addEventListener('click', (e) => {
+                const header = e.target.closest('.lancha-group-header[data-lancha-id]');
+                if (header) {
+                    const lanchaId = header.dataset.lanchaId;
+                    toggleLanchaGroup(lanchaId);
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            });
+
+            // Também suportar touch events explicitamente para máxima compatibilidade mobile
+            document.addEventListener('touchend', (e) => {
+                const header = e.target.closest('.lancha-group-header[data-lancha-id]');
+                if (header) {
+                    const lanchaId = header.dataset.lanchaId;
+                    toggleLanchaGroup(lanchaId);
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            });
         });
 
         // ESC para fechar qualquer modal aberto
