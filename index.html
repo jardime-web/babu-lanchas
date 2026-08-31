@@ -1105,7 +1105,9 @@
             AGENDAMENTOS_ABERTOS: 'agendamentosAbertos',
             AGENDAMENTOS_REALIZADOS: 'agendamentosRealizados',
             DESPESAS_LIST: 'despesasList',
-            CATEGORIAS_DESPESAS: 'categoriasDespesas'
+            CATEGORIAS_DESPESAS: 'categoriasDespesas',
+            BACKUP_DADOS: 'backupDados',
+            BACKUP_TIMESTAMP: 'backupTimestamp'
         };
 
         let SENHA = localStorage.getItem(STORAGE_KEYS.ADMIN_PASSWORD) || "1234";
@@ -1174,6 +1176,10 @@
                 ultimaSincronizacao = new Date().toISOString();
                 localStorage.setItem(STORAGE_KEYS.LAST_SYNC_TIME, ultimaSincronizacao);
                 console.log('✅ Sincronização com Google Sheets concluída');
+
+                // 💾 Criar backup automático após sincronizar
+                criarBackupAutomatico();
+
                 if (statusEl) {
                     statusEl.textContent = '✅ Sincronizado';
                     statusEl.style.color = '#27ae60';
@@ -1187,6 +1193,113 @@
             } finally {
                 sincronizando = false;
             }
+        }
+
+        // ============================================
+        // SISTEMA DE BACKUP AUTOMÁTICO
+        // ============================================
+        /**
+         * Cria backup automático de TODOS os dados locais em JSON
+         * Salva com timestamp para recuperação futura
+         */
+        function criarBackupAutomatico() {
+            try {
+                const backup = {
+                    timestamp: new Date().toISOString(),
+                    dados: {
+                        agendamentosAbertos: agendamentosAbertos,
+                        agendamentosRealizados: agendamentosRealizados,
+                        lanchas: lanchas,
+                        vendedores: vendedores,
+                        despesas: despesas,
+                        categoriasDespesas: categoriasDespesas
+                    }
+                };
+
+                localStorage.setItem(STORAGE_KEYS.BACKUP_DADOS, JSON.stringify(backup.dados));
+                localStorage.setItem(STORAGE_KEYS.BACKUP_TIMESTAMP, backup.timestamp);
+
+                console.log('💾 Backup automático criado:', backup.timestamp);
+                return true;
+            } catch (error) {
+                console.warn('⚠️ Erro ao criar backup:', error.message);
+                return false;
+            }
+        }
+
+        /**
+         * Recupera dados do backup se localStorage foi limpo
+         * Chamado automaticamente na inicialização se dados estão vazios
+         */
+        async function recuperarDoBackupOuGoogleSheets() {
+            // Verificar se localStorage está vazio
+            const temAgendamentosAbertos = localStorage.getItem(STORAGE_KEYS.AGENDAMENTOS_ABERTOS);
+            const temAgendamentosRealizados = localStorage.getItem(STORAGE_KEYS.AGENDAMENTOS_REALIZADOS);
+
+            if (temAgendamentosAbertos && temAgendamentosRealizados) {
+                console.log('✅ Dados locais encontrados, não precisa recuperar');
+                return false; // Dados já existem
+            }
+
+            console.log('🚨 Dados locais foram perdidos! Tentando recuperar...');
+
+            // Passo 1: Tentar recuperar do backup local
+            const backupLocal = localStorage.getItem(STORAGE_KEYS.BACKUP_DADOS);
+            if (backupLocal) {
+                try {
+                    const dadosBackup = JSON.parse(backupLocal);
+                    agendamentosAbertos = dadosBackup.agendamentosAbertos || [];
+                    agendamentosRealizados = dadosBackup.agendamentosRealizados || [];
+                    lanchas = dadosBackup.lanchas || [];
+                    vendedores = dadosBackup.vendedores || [];
+                    despesas = dadosBackup.despesas || [];
+                    categoriasDespesas = dadosBackup.categoriasDespesas || [];
+
+                    // Restaurar no localStorage
+                    localStorage.setItem(STORAGE_KEYS.AGENDAMENTOS_ABERTOS, JSON.stringify(agendamentosAbertos));
+                    localStorage.setItem(STORAGE_KEYS.AGENDAMENTOS_REALIZADOS, JSON.stringify(agendamentosRealizados));
+                    localStorage.setItem(STORAGE_KEYS.LANCHAS_LIST, JSON.stringify(lanchas));
+                    localStorage.setItem(STORAGE_KEYS.VENDEDORES_LIST, JSON.stringify(vendedores));
+                    localStorage.setItem(STORAGE_KEYS.DESPESAS_LIST, JSON.stringify(despesas));
+                    localStorage.setItem(STORAGE_KEYS.CATEGORIAS_DESPESAS, JSON.stringify(categoriasDespesas));
+
+                    console.log('✅ Dados recuperados do backup local!');
+                    alert('✅ Dados recuperados com sucesso do backup local!');
+                    return true;
+                } catch (error) {
+                    console.warn('⚠️ Erro ao recuperar do backup:', error.message);
+                }
+            }
+
+            // Passo 2: Se backup falhou, tentar Google Sheets
+            if (navigator.onLine) {
+                try {
+                    console.log('🔄 Tentando recuperar dados do Google Sheets...');
+                    const response = await fetch(GOOGLE_APPS_SCRIPT_URL + '?acao=obterAgendamentos');
+                    const dados = await response.json();
+
+                    if (dados && Array.isArray(dados) && dados.length > 0) {
+                        agendamentosAbertos = dados.filter(d => d.tipo === 'aberto');
+                        agendamentosRealizados = dados.filter(d => d.tipo === 'realizado');
+
+                        localStorage.setItem(STORAGE_KEYS.AGENDAMENTOS_ABERTOS, JSON.stringify(agendamentosAbertos));
+                        localStorage.setItem(STORAGE_KEYS.AGENDAMENTOS_REALIZADOS, JSON.stringify(agendamentosRealizados));
+
+                        console.log('✅ Dados recuperados do Google Sheets!');
+                        alert('✅ Dados recuperados com sucesso do Google Sheets!');
+
+                        // Recriar backup local com dados restaurados
+                        criarBackupAutomatico();
+                        return true;
+                    }
+                } catch (error) {
+                    console.warn('⚠️ Erro ao recuperar do Google Sheets:', error.message);
+                }
+            }
+
+            console.log('❌ Não foi possível recuperar os dados. Começando do zero.');
+            alert('❌ Não foi possível recuperar os dados. O app iniciará com dados vazios.');
+            return false;
         }
 
         // Sincronizar a cada 10 minutos quando online
@@ -1262,6 +1375,10 @@
             localStorage.setItem(STORAGE_KEYS.AGENDAMENTOS_ABERTOS, JSON.stringify(agendamentosAbertos));
             localStorage.setItem(STORAGE_KEYS.AGENDAMENTOS_REALIZADOS, JSON.stringify(agendamentosRealizados));
             console.log('✅ Agendamentos salvos em localStorage');
+
+            // 💾 Criar backup automático
+            criarBackupAutomatico();
+
             // 🔄 Sincronização imediata com Google Sheets
             sincronizarComGoogleSheets().catch(e => {
                 console.warn('⚠️ Erro na sincronização:', e.message);
@@ -1275,6 +1392,10 @@
 
         function saveDespesas() {
             localStorage.setItem(STORAGE_KEYS.DESPESAS_LIST, JSON.stringify(despesas));
+
+            // 💾 Criar backup automático
+            criarBackupAutomatico();
+
             // 🔄 Sincronização imediata com Google Sheets
             sincronizarComGoogleSheets().catch(e => console.warn('⚠️ Sincronização em background'));
         }
@@ -3127,6 +3248,37 @@
                     #extratoCompletoParaPrinter table tbody tr:nth-child(even) {
                         background: white !important;
                     }
+
+                    /* Garantir que títulos e divisões apareçam na impressão */
+                    #extratoCompletoParaPrinter h3 {
+                        display: block !important;
+                        visibility: visible !important;
+                        page-break-inside: avoid !important;
+                        color: #1a5f7a !important;
+                        border-bottom: 2px solid #3498db !important;
+                        padding-bottom: 10px !important;
+                        margin-bottom: 15px !important;
+                        margin-top: 10px !important;
+                        font-size: 16px !important;
+                        font-weight: bold !important;
+                    }
+
+                    #extratoCompletoParaPrinter h2 {
+                        display: block !important;
+                        visibility: visible !important;
+                        page-break-inside: avoid !important;
+                    }
+
+                    #extratoCompletoParaPrinter div {
+                        display: block !important;
+                        visibility: visible !important;
+                    }
+
+                    #extratoCompletoParaPrinter span {
+                        display: inline !important;
+                        visibility: visible !important;
+                    }
+
                     @page { margin: 10mm; }
                 }
             `;
@@ -3308,12 +3460,20 @@
             setTimeout(() => toast.remove(), 2000);
         }
 
-        window.addEventListener('load', () => {
+        window.addEventListener('load', async () => {
+            // 🚨 PRIMEIRO: Verificar se dados foram perdidos e recuperar
+            await recuperarDoBackupOuGoogleSheets();
+
+            // Carregar dados do storage normalmente
             getLanchasDoStorage();
             getVendedoresDoStorage();
             getAgendamentosDoStorage();
             getDespesasDoStorage();
             getCategoriasDespesasFromStorage();
+
+            // 💾 Criar backup inicial
+            criarBackupAutomatico();
+
             renderAbertos();
             renderDashboard();
 
