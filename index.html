@@ -2927,22 +2927,18 @@
         }
 
         function getDashboardResumo() {
-            const hoje = new Date();
-            const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
-
+            // Somar TODOS os meses, não apenas o atual
             let totalRecebido = 0, totalSolicitado = 0, totalDespesas = 0;
 
             [...agendamentosAbertos, ...agendamentosRealizados].forEach(a => {
-                if (a.data.startsWith(mesAtual)) {
-                    totalSolicitado += a.pedido;
-                    totalRecebido += a.recebido;
-                }
+                // Soma TODOS os agendamentos (sem filtro de mês)
+                totalSolicitado += a.pedido;
+                totalRecebido += a.recebido;
             });
 
             despesas.forEach(d => {
-                if (d.mes === mesAtual || d.mes.startsWith(mesAtual)) {
-                    totalDespesas += d.valor;
-                }
+                // Soma TODAS as despesas (sem filtro de mês)
+                totalDespesas += d.valor;
             });
 
             const aReceber = totalSolicitado - totalRecebido;
